@@ -1,0 +1,135 @@
+Name	Description	Units
+TIMEKEEPING
+TIMESTAMP_START	ISO timestamp start of averaging period (up to a 12-digit integer as specified by the data's temporal resolution)	YYYYMMDDHHMM
+TIMESTAMP_END	ISO timestamp end of averaging period (up to a 12-digit integer as specified by the data's temporal resolution)	YYYYMMDDHHMM
+BIOLOGICAL
+DBH	Diameter of tree measured at breast height (1.3m) with continuous dendrometers	cm
+LEAF_WET	Leaf wetness, range 0-100	%
+SAP_DT	Difference of probes temperature for sapflow measurements	deg C
+SAP_FLOW	Sap flow	mmolH2O m-2 s-1
+STEMFLOW	Excess precipitation that drains from outlying branches and leaves and is channeled through the stems to the ground	mm
+T_BOLE	Bole temperature	deg C
+T_CANOPY	Temperature of the canopy and/or surface underneath the sensor	deg C
+THROUGHFALL	Excess precipitation that passes directly through a canopy or drips from wet leaves to the ground	mm
+FOOTPRINT
+FC_SSITC_TEST	Results of the Steady State and Integral Turbulence Characteristics for FC according to Foken et al 2004 (i.e., 0, 1, 2)	adimensional
+FCH4_SSITC_TEST	Results of the Steady State and Integral Turbulence Characteristics for FCH4 according to Foken et al 2004 (i.e., 0, 1, 2)	adimensional
+FETCH_70	Distance at which footprint cumulative probability is 70%	m
+FETCH_80	Distance at which footprint cumulative probability is 80%	m
+FETCH_90	Distance at which footprint cumulative probability is 90%	m
+FETCH_FILTER	Footprint quality flag (i.e., 0, 1): 0 and 1 indicate data measured when wind coming from direction that should be discarded and kept, respectively	adimensional
+FETCH_MAX	Distance at which footprint contribution is maximum	m
+FN2O_SSITC_TEST	Results of the Steady State and Integral Turbulence Characteristics for FN2O according to Foken et al 2004 (i.e., 0, 1, 2)	adimensional
+FNO_SSITC_TEST	Results of the Steady State and Integral Turbulence Characteristics for FNO according to Foken et al 2004 (i.e., 0, 1, 2)	adimensional
+FNO2_SSITC_TEST	Results of the Steady State and Integral Turbulence Characteristics for FNO2 according to Foken et al 2004 (i.e., 0, 1, 2)	adimensional
+FO3_SSITC_TEST	Results of the Steady State and Integral Turbulence Characteristics for FO3 according to Foken et al 2004 (i.e., 0, 1, 2)	adimensional
+GASES
+CH4	Methane (CH4) mole fraction in wet air	nmolCH4 mol-1
+CO	Carbon Monoxide (CO) mole fraction in wet air	nmolCO mol-1
+CO2	Carbon Dioxide (CO2) mole fraction in wet air	µmolCO2 mol-1
+CO2C13	Stable isotopic composition of CO2 - C13 (i.e., d13C of CO2)	‰ (permil)
+CO2_SIGMA	Standard deviation of carbon dioxide mole fraction in wet air	µmolCO2 mol-1
+FC	Carbon Dioxide (CO2) turbulent flux (no storage correction)	µmolCO2 m-2 s-1
+FCH4	Methane (CH4) turbulent flux (no storage correction)	nmolCH4 m-2 s-1
+FN2O	Nitrous oxide (N2O) turbulent flux (no storage correction)	nmolN2O m-2 s-1
+FNO	Nitric oxide (NO) turbulent flux (no storage correction)	nmolNO m-2 s-1
+FNO2	Nitrogen dioxide (NO2) turbulent flux (no storage correction)	nmolNO2 m-2 s-1
+FO3	Ozone (O3) turbulent flux (no storage correction)	nmolO3 m-2 s-1
+H2O	Water (H2O) vapor mole fraction	mmolH2O mol-1
+H2O_SIGMA	Standard deviation of water vapor mole fraction	mmolH2O mol-1
+N2O	Nitrous Oxide (N2O) mole fraction in wet air	nmolN2O mol-1
+NO	Nitric oxide (NO) mole fraction in wet air	nmolNO mol-1
+NO2	Nitrogen dioxide (NO2) mole fraction in wet air	nmolNO2 mol-1
+O3	Ozone (O3) mole fraction in wet air	nmolO3 mol-1
+SC	CO2 storage flux	µmolCO2 m-2 s-1
+SCH4	Methane (CH4) storage flux	nmolCH4 m-2 s-1
+SN2O	Nitrous oxide (N2O) storage flux	nmolN2O m-2 s-1
+SNO	Nitric oxide (NO) storage flux	nmolNO m-2 s-1
+SNO2	Nitrogen dioxide (NO2) storage flux	nmolNO2 m-2 s-1
+SO2	Sulfur Dioxide (SO2) mole fraction in wet air	nmolSO2 mol-1
+SO3	Ozone (O3) storage flux	nmolO3 m-2 s-1
+HEAT
+G	Soil heat flux	W m-2
+H	Sensible heat turbulent flux (no storage correction)	W m-2
+H_SSITC_TEST	Results of the Steady State and Integral Turbulence Characteristics for H according to Foken et al 2004 (i.e., 0, 1, 2)	adimensional
+LE	Latent heat turbulent flux (no storage correction)	W m-2
+LE_SSITC_TEST	Results of the Steady State and Integral Turbulence Characteristics for LE according to Foken et al 2004 (i.e., 0, 1, 2)	adimensional
+SB	Heat storage flux in biomass	W m-2
+SG	Heat storage flux in the soil above the soil heat fluxes measurement	W m-2
+SH	Heat storage flux in the air	W m-2
+SLE	Latent heat storage flux	W m-2
+MET_ATM
+PA	Atmospheric pressure	kPa
+PBLH	Planetary boundary layer height	m
+RH	Relative humidity, range 0-100	%
+T_SONIC	Sonic temperature	deg C
+T_SONIC_SIGMA	Standard deviation of sonic temperature	deg C
+TA	Air temperature	deg C
+VPD	Vapor Pressure Deficit	hPa
+MET_PRECIP
+D_SNOW	Snow depth	cm
+P	Precipitation	mm
+P_RAIN	Rainfall	mm
+P_SNOW	Snowfall	mm
+RUNOFF	Run off	mm
+MET_RAD
+ALB	Albedo, range 0-100	%
+APAR	Absorbed PAR	µmol m-2 s-1
+FAPAR	Fraction of absorbed PAR, range 0-100	%
+FIPAR	Fraction of intercepted PAR, range 0-100	%
+LW_BC_IN	Longwave radiation, below canopy incoming	W m-2
+LW_BC_OUT	Longwave radiation, below canopy outgoing	W m-2
+LW_IN	Longwave radiation, incoming	W m-2
+LW_OUT	Longwave radiation, outgoing	W m-2
+NDVI	Normalized Difference Vegetation Index	adimensional
+NETRAD	Net radiation	W m-2
+PPFD_BC_IN	Photosynthetic photon flux density, below canopy incoming	µmolPhoton m-2 s-1
+PPFD_BC_OUT	Photosynthetic photon flux density, below canopy outgoing	µmolPhoton m-2 s-1
+PPFD_DIF	Photosynthetic photon flux density, diffuse incoming	µmolPhoton m-2 s-1
+PPFD_DIR	Photosynthetic photon flux density, direct incoming	µmolPhoton m-2 s-1
+PPFD_IN	Photosynthetic photon flux density, incoming	µmolPhoton m-2 s-1
+PPFD_OUT	Photosynthetic photon flux density, outgoing	µmolPhoton m-2 s-1
+PRI	Photochemical Reflectance Index	adimensional
+R_UVA	UVA radiation, incoming	W m-2
+R_UVB	UVB radiation, incoming	W m-2
+SPEC_NIR_IN	Radiation (near infra-red band), incoming	µmolPhoton m-2 s-1
+SPEC_NIR_OUT	Radiation (near infra-red band), outgoing	µmolPhoton m-2 s-1
+SPEC_NIR_REFL	Reflectance (near infra-red band)	adimensional
+SPEC_PRI_REF_IN	Radiation for PRI reference band (e.g., 570 nm), incoming	µmolPhoton m-2 s-1
+SPEC_PRI_REF_OUT	Radiation for PRI reference band (e.g., 570 nm), outgoing	µmolPhoton m-2 s-1
+SPEC_PRI_REF_REFL	Reflectance for PRI reference band (e.g., 570 nm)	adimensional
+SPEC_PRI_TGT_IN	Radiation for PRI target band (e.g., 531 nm), incoming	µmolPhoton m-2 s-1
+SPEC_PRI_TGT_OUT	Radiation for PRI target band (e.g., 531 nm), outgoing	µmolPhoton m-2 s-1
+SPEC_PRI_TGT_REFL	Reflectance for PRI target band (e.g., 531 nm)	adimensional
+SPEC_RED_IN	Radiation (red band), incoming	µmolPhoton m-2 s-1
+SPEC_RED_OUT	Radiation (red band), outgoing	µmolPhoton m-2 s-1
+SPEC_RED_REFL	Reflectance (red band)	adimensional
+SW_BC_IN	Shortwave radiation, below canopy incoming	W m-2
+SW_BC_OUT	Shortwave radiation, below canopy outgoing	W m-2
+SW_DIF	Shortwave radiation, diffuse incoming	W m-2
+SW_DIR	Shortwave radiation, direct incoming	W m-2
+SW_IN	Shortwave radiation, incoming	W m-2
+SW_OUT	Shortwave radiation, outgoing	W m-2
+MET_SOIL
+SWC	Soil water content (volumetric), range 0-100	%
+SWP	Soil water potential	kPa
+TS	Soil temperature	deg C
+TSN	Snow temperature	deg C
+TW	Water temperature	deg C
+WTD	Water table depth	m
+MET_WIND
+MO_LENGTH	Monin-Obukhov length	m
+TAU	Momentum flux	kg m-1 s-2
+TAU_SSITC_TEST	Results of the Steady State and Integral Turbulence Characteristics for TAU according to Foken et al 2004 (i.e., 0, 1, 2)	adimensional
+U_SIGMA	Standard deviation of velocity fluctuations (towards main-wind direction after coordinates rotation)	m s-1
+USTAR	Friction velocity	m s-1
+V_SIGMA	Standard deviation of lateral velocity fluctuations (cross main-wind direction after coordinates rotation)	m s-1
+W_SIGMA	Standard deviation of vertical velocity fluctuations	m s-1
+WD	Wind direction	Decimal degrees
+WS	Wind speed	m s-1
+WS_MAX	maximum WS in the averaging period	m s-1
+ZL	Monin-Obukhov Stability	adimensional
+PRODUCTS
+GPP	Gross Primary Productivity	µmolCO2 m-2 s-1
+NEE	Net Ecosystem Exchange	µmolCO2 m-2 s-1
+RECO	Ecosystem Respiration	µmolCO2 m-2 s-1
