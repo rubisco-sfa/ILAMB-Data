@@ -3,10 +3,12 @@ import glob
 from netCDF4 import Dataset
 import numpy as np
 import xlrd,os,time
+from urllib.request import urlretrieve
 
-remote_source = "doi:10.18160/GCP-2016"
-gist_source = "blah"
+remote_source = "https://www.globalcarbonproject.org/carbonbudget/archive/2016/Global_Carbon_Budget_2016v1.0.xlsx"
+gist_source = "https://github.com/rubisco-sfa/ILAMB-Data/blob/master/GCP/GCPtoNetCDF4.py"
 local_source = "Global_Carbon_Budget_2016v1.0.xlsx"
+if not os.path.isfile(local_source): urlretrieve(remote_source, local_source) 
 stamp = time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(local_source)))
 
 # Parse information from the XLS workbook
