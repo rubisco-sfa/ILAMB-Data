@@ -1,178 +1,93 @@
+import xarray as xr
+import glob,time
 import numpy as np
-from netCDF4 import Dataset
-import pylab as plt
+import pandas as pd
+from ILAMB.constants import mid_months,bnd_months
 import os
-import time
-import datetime
-from mpl_toolkits.basemap import Basemap
-import netCDF4 as nc
-import math
-from urllib.request import urlretrieve
-from scipy.interpolate import griddata
+from netCDF4 import Dataset
 
-# set up Data directory
-DataDir = "/Users/mingquan/newDATA"
+""" The observational data cannot be downloaded automatically. You
+will need to register with the FluxCom Data Portal:
 
-# Set general information for the data source
-remote_source = "https://doi.org/doi:10.17871/FLUXCOM_RS_METEO_CRUNCEPv6_1980_2013_v1"
-gist_source = "https://github.com/mmu2019/Datasets/blob/master/read-gpp-fluxcom.py"
-local_source = DataDir + '/FluxCom/gpp/GPP.ANN.CRUNCEPv6.monthly.YYYY.nc'
-stamp1 = '2019-05-07'
+https://www.bgc-jena.mpg.de/geodb/projects/Home.php
 
-datestr = str(datetime.datetime.now())
-TmpStr  = datestr.split(' ')
-stamp2  = TmpStr[0]
+and then with the username and password you will receive, download the
+Artificial Neural Network (ANN) data found in the 'remote_source'
+variable below.
 
-print(datestr)
-print(stamp2)
+In addition to copying the data into a single netCDF file for use in
+ILAMB, we have found a number of values mostly near coastlines which
+are hard zeros for all times defined in the dataset. We believe these
+to be artifacts of the neural network and not true zeros. Thus we
+apply an additional mask to areas which are a hard zero (less than
+1e-15) for all times defined.
+"""
+remote_source = "ftp://ftp.bgc-jena.mpg.de/pub/outgoing/FluxCom/CarbonFluxes_v1_2017/RS+METEO/CRUNCEPv6/raw/monthly/"
 
-instit = "Department Biogeochemical Integration, Max Planck Institute for Biogeochemistry, Germany"
+for cf_name,var_name in zip(["gpp","nee","reco"],
+                            ["GPP","NEE","TER" ]):
+    V = sorted(glob.glob("%s*.nc" % var_name))
+    if len(V) == 0: continue
+    dset = xr.concat([xr.open_dataset(f) for f in V],dim="time")
+    data = np.ma.masked_invalid(dset[var_name])
+    mask = np.ones(data.shape[0],dtype=bool)[:,np.newaxis,np.newaxis]*(np.abs(data)<1e-15).all(axis=0)
+    data = np.ma.masked_array(data,mask=data.mask+mask)
+    download_stamp = time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(V[0])))
+    generate_stamp = time.strftime('%Y-%m-%d')
+    dt = pd.to_datetime(dset.time.data)
+    t  = np.array([(t.year-1850)*365+mid_months[t.month-1] for t in dt])
+    tb = np.array([[(t.year-1850)*365+bnd_months[t.month-1],
+                    (t.year-1850)*365+bnd_months[t.month]] for t in dt])
+    lat = dset.lat
+    lon = dset.lon
+    with Dataset("%s.nc" % cf_name, mode="w") as oset:
 
-period = "1980-01 through 2013-12"
-origtr = "monthly"
-origsr = "0.5 degree"
-origut = "g/m2/day"
-finltr = "monthly"
-finlsr = "0.5 degree"
-finlut = "kg/m2/s"
-
-# Create temporal dimension
-nyears    = 34
-nmonth    = 12
-smonth = np.asarray(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'])
-month_bnd = np.asarray([0,31,59,90,120,151,181,212,243,273,304,334,365],dtype=float)
-tbnd  = np.asarray([((np.arange(nyears)*365)[:,np.newaxis]+month_bnd[:-1]).flatten(),
-                    ((np.arange(nyears)*365)[:,np.newaxis]+month_bnd[+1:]).flatten()]).T
-tbnd += (1980-1850)*365
-tbnd.shape
-t     = tbnd.mean(axis=1)
-
-# Create spatial dimension
-res    = 0.5
-latbnd = np.asarray([np.arange(- 90    , 90     ,res),
-                     np.arange(- 90+res, 90+0.01,res)]).T
-lonbnd = np.asarray([np.arange(-180    ,180     ,res),
-                     np.arange(-180+res,180+0.01,res)]).T
-lat    = latbnd.mean(axis=1)
-lon    = lonbnd.mean(axis=1)
-
-ntim = t.size
-nlat = lat.size
-nlon = lon.size
-
-# Create some fake data
-data   = np.ma.masked_array(np.random.rand(t.size,lat.size,lon.size))
-area   = np.ma.masked_array(np.random.rand(lat.size,lon.size))
-
-data[:,:,:] = 0.0
-area[:,:]   = 0.0
-
-nlat = lat.size
-nlon = lon.size
-
-ij = 0
-for i in range(nyears):
-
-    year    = i + 1980
-
-    print(year)
-
-    # read single netCDF file
-    filename = DataDir + '/FluxCom/gpp/GPP.ANN.CRUNCEPv6.monthly.' + str(year) + '.nc'
-    print(filename)
-    flx=Dataset(filename,'r',format='NETCDF3')
-    data0 = flx.variables['GPP']
-    lats  = flx.variables['lat']
-
-    #long_name = data0.long_name
-    long_name = "gross primary production"
-
-    #data1 = np.where(data0[:,:,:]<=-999, 0, data0[:,:,:])
-
-    #latrange = data0.latitude_range
-
-    #data2 = np.float_(data1[:,:,:])*data0.DataScaleFactor + data0.DataOffsetValue
-
-    #ilat1 = np.where(lat==latrange[0])
-    #ilat2 = np.where(lat==latrange[1])
-
-    #j1 = int(ilat1[0])
-    #j2 = int(ilat2[0]) + 1
-
-    for j in range(nmonth):
-
-        data[ij,:,:] = data0[j,::-1,:]
-
-        ij = ij + 1
-
-# convert unit from g/m2/day to kg/m2/s
-data[:,:,:] = data[:,:,:]/(24*3600*1000)
-
-print(t.shape)
-print(data0.shape)
-print(data.shape)
-
-data_min = data.min()
-data_max = data.max()
-
-with Dataset(DataDir + "/gpp.nc", mode="w") as dset:
-
-    # Create netCDF dimensions
-    dset.createDimension("time",size=  t.size)
-    dset.createDimension("lat" ,size=lat.size)
-    dset.createDimension("lon" ,size=lon.size)
-    dset.createDimension("nb"  ,size=2       )
-
-    # Create netCDF variables
-    T  = dset.createVariable("time"       ,t.dtype   ,("time"     ))
-    TB = dset.createVariable("time_bounds",t.dtype   ,("time","nb"))
-    X  = dset.createVariable("lat"        ,lat.dtype ,("lat"      ))
-    XB = dset.createVariable("lat_bounds" ,lat.dtype ,("lat","nb" ))
-    Y  = dset.createVariable("lon"        ,lon.dtype ,("lon"      ))
-    YB = dset.createVariable("lon_bounds" ,lon.dtype ,("lon","nb" ))
-    D  = dset.createVariable("gpp"        ,data.dtype,("time","lat","lon"), fill_value = -999.)
-
-    print(D.shape)
-
-    # Load data and encode attributes
-    # time
-    T [...]    = t
-    T.units    = "days since 1850-01-01"
-    T.calendar = "noleap"
-    T.bounds   = "time_bounds"
-    TB[...]    = tbnd
-    T.standard_name = "time"
-    T.long_name     = "time"
-
-    # lat
-    X [...]    = lat
-    X.units    = "degrees_north"
-    XB[...]    = latbnd
-    X.standard_name = "latitude"
-    X.long_name     = "latitude"
-
-    # lon
-    Y [...]    = lon
-    Y.units    = "degrees_east"
-    YB[...]    = lonbnd
-    Y.standard_name = "longitude"
-    Y.long_name     = "longitude"
-
-    # data
-    D[...] = data
-    D.units = "kg/m2/s"
-    D.standard_name = long_name
-    D.long_name     = long_name
-    D.actual_range = np.asarray([data_min,data_max])
+        # dimensions
+        oset.createDimension("time", size = t.size)
+        oset.createDimension("lat", size = lat.size)
+        oset.createDimension("lon", size = lon.size)
+        oset.createDimension("nb", size = 2)
+        
+        # time
+        T = oset.createVariable("time", t.dtype, ("time"))
+        T[...] = t
+        T.units = "days since 1850-01-01 00:00:00"
+        T.calendar = "noleap"
+        T.bounds = "time_bounds"
+        
+        # time bounds
+        TB = oset.createVariable("time_bounds", t.dtype, ("time", "nb"))
+        TB[...] = tb
     
-    dset.title = "FLUXCOM (RS+METEO) Global Land Carbon Fluxes using CRUNCEP climate data"
-    dset.version = "1"
-    dset.institutions = instit
-    dset.source = "Data generated by Artificial Neural Networks and forced with CRUNCEPv6 meteorological data and MODIS (RS+METEO)"
-    dset.history = """
+        # latitude
+        X = oset.createVariable("lat", lat.dtype, ("lat"))
+        X[...] = lat
+        X.standard_name = "latitude"
+        X.long_name = "site latitude"
+        X.units = "degrees_north"
+    
+        # longitude
+        Y = oset.createVariable("lon", lon.dtype, ("lon"))
+        Y[...] = lon
+        Y.standard_name = "longitude"
+        Y.long_name = "site longitude"
+        Y.units = "degrees_east"
+    
+        # data
+        D = oset.createVariable(cf_name, data.dtype, ("time", "lat", "lon"), zlib=True)
+        D[...] = data
+        D.units = dset[var_name].units.replace("gC","g")
+        with np.errstate(invalid='ignore'):
+            D.actual_range = np.asarray([data.min(),data.max()])
+
+        oset.title = "FLUXCOM (RS+METEO) Global Land Carbon Fluxes using CRUNCEP climate data"
+        oset.version = "1"
+        oset.institutions = "Department Biogeochemical Integration, Max Planck Institute for Biogeochemistry, Germany"
+        oset.source = "Data generated by Artificial Neural Networks and forced with CRUNCEPv6 meteorological data and MODIS (RS+METEO)"
+        oset.history = """
 %s: downloaded source from %s;
-%s: converted to netCDF with %s""" % (stamp1, remote_source, stamp2, gist_source)
-    dset.references  = """
+%s: converted to netCDF, additionally we apply a mask where |var|<1e-15 for all time.""" % (download_stamp, remote_source, generate_stamp)
+        oset.references  = """
 @ARTICLE{Jung2017,
   author = {Jung, M., M. Reichstein, C.R. Schwalm, C. Huntingford, S. Sitch, A. Ahlstrom, A. Arneth, G. Camps-Valls, P. Ciais, P. Friedlingstein, F. Gans, K. Ichii, A.K. Jain, E. Kato, D. Papale, B. Poulter, B. Raduly, C. Rodenbeck, G. Tramontana, N. Viovy, Y.P. Wang, U. Weber, S. Zaehle and N. Zeng},
   title = {Compensatory water effects link yearly global land CO2 sink changes to temperature},
@@ -191,6 +106,6 @@ with Dataset(DataDir + "/gpp.nc", mode="w") as dset:
   page = {4291-4313},
   doi = {https://doi.org/10.5194/bg-13-4291-2016}
 }"""
-    dset.comments = """
-time_period: %s; original_temporal_resolution: %s; original_spatial_resolution: %s; original_units: %s; final_temporal_resolution: %s; final_spatial_resolution: %s; final_units: %s""" % (period, origtr, origsr, origut, finltr, finlsr, finlut)
-    dset.convention = "CF-1.7"
+        oset.comments = """
+time_period: %d-%02d through %d-%02d; temporal_resolution: monthly; spatial_resolution: 0.5 degree; units: %s""" % (dt[0].year,dt[0].month,dt[-1].year,dt[-1].month,D.units)
+        oset.convention = "CF-1.8"
