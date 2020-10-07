@@ -24,8 +24,8 @@ apply an additional mask to areas which are a hard zero (less than
 """
 remote_source = "ftp://ftp.bgc-jena.mpg.de/pub/outgoing/FluxCom/CarbonFluxes_v1_2017/RS+METEO/CRUNCEPv6/raw/monthly/"
 
-for cf_name,var_name in zip(["gpp","nee","reco"],
-                            ["GPP","NEE","TER" ]):
+for cf_name,var_name in zip(["gpp","reco"],
+                            ["GPP","TER" ]):
     V = sorted(glob.glob("%s*.nc" % var_name))
     if len(V) == 0: continue
     dset = xr.concat([xr.open_dataset(f) for f in V],dim="time")
