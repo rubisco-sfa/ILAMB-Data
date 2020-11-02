@@ -88,14 +88,15 @@ for cf_name,var_name in zip(["gpp","reco"],
 %s: downloaded source from %s;
 %s: converted to netCDF, additionally we apply a mask where |var|<1e-15 for all time.""" % (download_stamp, remote_source, generate_stamp)
         oset.references  = """
-@ARTICLE{Jung2017,
-  author = {Jung, M., M. Reichstein, C.R. Schwalm, C. Huntingford, S. Sitch, A. Ahlstrom, A. Arneth, G. Camps-Valls, P. Ciais, P. Friedlingstein, F. Gans, K. Ichii, A.K. Jain, E. Kato, D. Papale, B. Poulter, B. Raduly, C. Rodenbeck, G. Tramontana, N. Viovy, Y.P. Wang, U. Weber, S. Zaehle and N. Zeng},
-  title = {Compensatory water effects link yearly global land CO2 sink changes to temperature},
-  journal = {Nature},
-  year = {2017},
-  number = {541},
-  page = {516-520},
-  doi = {https://doi.org/10.1038/nature20780}
+@ARTICLE{Jung2019,
+  author = {Jung, M., S. Koirala, U. Weber, K. Ichii, F. Gans, Gustau-Camps-Valls, D. Papale, C. Schwalm, G. Tramontana, and M. Reichstein},
+  title = {The FLUXCOM ensemble of global land-atmosphere energy fluxes},
+  journal = {Scientific Data},
+  year = {2019},
+  volume = {6},
+  issue = {1},
+  page = {74},
+  doi = {https://doi.org/10.1038/s41597-019-0076-8}
 }
 @ARTICLE{Tramontana2016,
   author = {Tramontana, G., M. Jung, C.R. Schwalm, K. Ichii, G. Camps-Valls, B. Raduly, M. Reichstein, M.A. Arain, A. Cescatti, G. Kiely, L. Merbold, P. Serrano-Ortiz, S. Sickert, S. Wolf, and D. Papale},
@@ -109,3 +110,4 @@ for cf_name,var_name in zip(["gpp","reco"],
         oset.comments = """
 time_period: %d-%02d through %d-%02d; temporal_resolution: monthly; spatial_resolution: 0.5 degree; units: %s""" % (dt[0].year,dt[0].month,dt[-1].year,dt[-1].month,D.units)
         oset.convention = "CF-1.8"
+
