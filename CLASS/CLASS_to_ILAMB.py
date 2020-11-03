@@ -34,7 +34,7 @@ with Dataset(local_sources[0]) as dset:
     lat = dset.variables['lat'][...]
     lon = dset.variables['lon'][...]
 
-for var_name in ['mrro','pr','dw','hfls','hfss','rs']:
+for var_name in ['mrro','pr','dw','hfls','hfss','hfds','rs']:
 
     # piece together data
     data      = np.zeros((t.size,lat.size,lon.size))
@@ -58,7 +58,7 @@ for var_name in ['mrro','pr','dw','hfls','hfss','rs']:
     # write output
     data = np.ma.masked_invalid(data)
     data_bnds = np.ma.masked_invalid(data_bnds)
-    with Dataset("CLASS-%s.nc" % var_name, mode="w") as dset:
+    with Dataset("%s.nc" % var_name, mode="w") as dset:
 
         # dimensions
         dset.createDimension("time", size = t.size)
@@ -125,10 +125,15 @@ for var_name in ['mrro','pr','dw','hfls','hfss','rs']:
   doi =          {doi:10.25914/5c872258dc183},
   year = 	 {2019}
 }
-
-@Article{Hobeichi2020,
-  author = 	 {Sanaa Hobeichi and Gab Abramowitz and Jason Evans},
-  title = 	 {Conserving Land-Atmosphere Synthesis Suite (CLASS)},
-  journal = 	 {(submitted)},
-  year = 	 {2020}
-}"""
+@article{Hobeichi2020,
+    author = {Hobeichi, Sanaa and Abramowitz, Gab and Evans, Jason},
+    title = {Conserving Land–Atmosphere Synthesis Suite (CLASS)},
+    journal = {Journal of Climate},
+    volume = {33},
+    number = {5},
+    pages = {1821-1844},
+    year = {2020},
+    month = {01},
+    doi = {doi:10.1175/JCLI-D-19-0036.1},
+}
+"""
