@@ -126,7 +126,7 @@ if __name__ == "__main__":
     from ILAMB.Regions import Regions
     r = Regions()
     r.addRegionNetCDF4(os.path.join(os.environ['ILAMB_ROOT'],"DATA/regions/GlobalLand.nc"))
-    data_dir = "/home/nate/work/ILAMB-Data"
+    data_dir = "./"
                  
     data = {}
     for fname in [os.path.join(os.environ['ILAMB_ROOT'],'DATA/rns/CERES/rns_0.5x0.5.nc'),
