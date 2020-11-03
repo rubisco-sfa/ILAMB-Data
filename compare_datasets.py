@@ -52,7 +52,7 @@ def CreateVariableComparisonArray(data,cmap,name,filename):
     
     # plots
     f = 1.5
-    fig = plt.figure(figsize=(f*4*n,f*2.2*n),dpi=200)
+    fig = plt.figure(figsize=(f*4*n,(f+0.5*(n==2))*2.2*n),dpi=200)
     mean_ax = None
     bias_ax = None
     for i in range(n):
@@ -92,7 +92,7 @@ def CreateVariableComparisonArray(data,cmap,name,filename):
                     x = np.ma.masked_array(a.data,mask=mask).compressed()
                     y = np.ma.masked_array(b.data,mask=mask).compressed()
                     ax.plot([limits[0],limits[1]],[limits[0],limits[1]],'--r')
-                    ax.scatter(x,y,color='k',s=0.6,alpha=0.02,linewidths=0)
+                    ax.scatter(x,y,color='k',s=0.6,alpha=0.1,linewidths=0)
                     ax.set_xlim(limits[0],limits[1])
                     ax.set_ylim(limits[0],limits[1])
                     ax.set_xlabel(sources[i])
@@ -129,6 +129,30 @@ if __name__ == "__main__":
     data_dir = "./"
                  
     data = {}
+    for fname in [os.path.join(os.environ['ILAMB_ROOT'],'DATA/reco/GBAF/reco_0.5x0.5.nc'),
+                  os.path.join(data_dir,"FLUXCOM/reco.nc")]:
+        source = fname.split("/")[-2]
+        data[source] = Variable(filename=fname,variable_name="reco").integrateInTime(mean=True).convert("g m-2 d-1")
+    CreateVariableComparisonArray(data,"Greens","Respiration","reco.png")
+    
+    data = {}
+    for fname in [os.path.join(os.environ['ILAMB_ROOT'],'DATA/pr/CMAP/pr_0.5x0.5.nc'),
+                  os.path.join(os.environ['ILAMB_ROOT'],'DATA/pr/GPCP2/pr_0.5x0.5.nc'),
+                  os.path.join(data_dir,"GPCC/pr.nc"),
+                  os.path.join(data_dir,"CLASS/pr.nc")]:
+        source = fname.split("/")[-2]
+        data[source] = Variable(filename=fname,variable_name="pr").integrateInTime(mean=True).convert("mm d-1")
+        data[source].data.mask += r.getMask("global",data[source])
+    CreateVariableComparisonArray(data,"Blues","Precipitation","pr.png")
+
+    data = {}
+    for fname in [os.path.join(os.environ['ILAMB_ROOT'],'DATA/runoff/LORA/LORA.nc'),
+                  os.path.join(data_dir,"CLASS/mrro.nc")]:
+        source = fname.split("/")[-2]
+        data[source] = Variable(filename=fname,variable_name="mrro").integrateInTime(mean=True).convert("mm d-1")
+    CreateVariableComparisonArray(data,"Blues","Runoff","mrro.png")
+
+    data = {}
     for fname in [os.path.join(os.environ['ILAMB_ROOT'],'DATA/rns/CERES/rns_0.5x0.5.nc'),
                   os.path.join(os.environ['ILAMB_ROOT'],'DATA/rns/GEWEX.SRB/rns_0.5x0.5.nc'),
                   os.path.join(data_dir,"FLUXCOM/rns.nc"),
@@ -163,3 +187,5 @@ if __name__ == "__main__":
         source = fname.split("/")[-2]
         data[source] = Variable(filename=fname,variable_name="gpp").integrateInTime(mean=True).convert("g m-2 d-1")
     CreateVariableComparisonArray(data,"Greens","Gross Primary Production","gpp.png")
+
+    
