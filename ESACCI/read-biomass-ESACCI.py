@@ -9,10 +9,8 @@ from mpl_toolkits.basemap import Basemap
 import math
 import glob
 from urllib.request import urlretrieve
-from scipy.interpolate import griddata
 from subroutines import *
 from PIL import Image
-from PIL.TiffTags import TAGS
 from pylab import *
 from osgeo import gdal, ogr, osr
 
@@ -64,15 +62,6 @@ tbnd[0,1] = tbnd0[nyears-1,1]
 
 t     = tbnd.mean(axis=1)
 t.shape
-
-# Create old spatial dimension
-#res    = 0.25
-#lat1bnd = np.asarray([np.arange(- 90    , 90     ,res),
-#                     np.arange(- 90+res, 90+0.01,res)]).T
-#lon1bnd = np.asarray([np.arange(-180    ,180     ,res),
-#                     np.arange(-180+res,180+0.01,res)]).T
-#lat1    = lat1bnd.mean(axis=1)
-#lon1    = lon1bnd.mean(axis=1)
 
 # Create new spatial dimension
 res    = 0.5
