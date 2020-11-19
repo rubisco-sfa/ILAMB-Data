@@ -129,6 +129,15 @@ if __name__ == "__main__":
     data_dir = "./"
                  
     data = {}
+    for fname in [os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/GEOCARBON/biomass_0.5x0.5.nc'),
+                  os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/GLOBAL.CARBON/biomass_0.5x0.5.nc'),
+                  os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/Tropical/biomass_0.5x0.5.nc'),
+                  os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/Thurner/biomass_0.5x0.5.nc')]:
+        source = fname.split("/")[-2]
+        data[source] = Variable(filename=fname,variable_name="cVeg",alternate_vars=['biomass']).integrateInTime(mean=True).convert("kg m-2")
+    CreateVariableComparisonArray(data,"Greens","Biomass","cVeg.png")
+    
+    data = {}
     for fname in [os.path.join(os.environ['ILAMB_ROOT'],'DATA/reco/GBAF/reco_0.5x0.5.nc'),
                   os.path.join(data_dir,"FLUXCOM/reco.nc")]:
         source = fname.split("/")[-2]
