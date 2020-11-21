@@ -1,21 +1,11 @@
 import numpy as np
 from netCDF4 import Dataset
-import pylab as plt
-import os
-import sys
-import time
 import datetime
-from mpl_toolkits.basemap import Basemap
 import math
-import glob
-from urllib.request import urlretrieve
-from subroutines import *
-from PIL import Image
-from pylab import *
 from osgeo import gdal, ogr, osr
 
 # set up Data directory 
-DataDir = "/Users/mingquan/newDATA"
+DataDir = "./"
 
 # set up initial and final years of data
 start_yr = 2017
@@ -73,8 +63,8 @@ lat    = latbnd.mean(axis=1)
 lon    = lonbnd.mean(axis=1)
 
 # Create some fake data
-data   = np.ma.masked_array(np.random.rand(t.size,lat.size,lon.size))
-area   = np.ma.masked_array(np.random.rand(lat.size,lon.size))
+data   = np.ma.masked_array(np.zero.rand(t.size,lat.size,lon.size))
+area   = np.ma.masked_array(np.zero.rand(lat.size,lon.size))
 
 nlat = lat.size
 nlon = lon.size
@@ -103,16 +93,11 @@ def rebin(arr, new_shape):
 
 # read single netCDF file
 filename = DataDir + '/' + sourceID + '/' + local_source
-print(filename)
 ag=Dataset(filename,'r',format='NETCDF4')
-print(ag.variables) 
 
-#print(ba.variables.keys())
 agb1 = ag.variables['agb']
 lat1 = ag.variables['lat']
 lon1 = ag.variables['lon']
-
-print(agb1)
 
 agb  = agb1[0,::-1,:]
 lat1 = lat1[::-1]
@@ -122,21 +107,10 @@ del agb1
 nlat1 = lat1.size
 nlon1 = lon1.size
 
-print(nlat1)
-print(nlon1)
-
 nlat2 = int(nlat1/2)
 nlon2 = int(nlon1/2)
 
-print(nlat2)
-print(nlon2)
-
-print(lat1[0:nlat2])
-print(lon1[0:nlon2])
-
-#abgb = np.short(agb[0:nlat2,0:nlon2], dtype=np.float64, order='C')
-
-biomass = np.ma.masked_array(np.random.rand(nlat,nlon), dtype=float64)
+biomass = np.ma.masked_array(np.zero.rand(nlat,nlon), dtype=float64)
 
 biomass[...] = 0.
 
@@ -161,11 +135,6 @@ for ny in range(nlat1):
         # obtain total biomass mass at each grid cell
         biomass[iy,ix] = biomass[iy,ix] + agb[ny,nx]*areas
 
-#biomass = rebin(abgb, (int(nlat/2), int(nlon/2)))
-
-print('Total biomass')
-print(np.sum(biomass*1.0e-9))
-
 # convert total mass (Mg) to density (Mg/m2)
 biomass[...] = biomass[...]/area[...]
 
@@ -175,16 +144,9 @@ biomass[:,:] = biomass[:,:]/2.
 # convert the unit from Mg/m2 to Kg/m2
 biomass[:,:] = biomass[:,:]*1000.
 
-print(biomass.shape)
-
-#data[:,:] = rebin(agb, (nlat, nlon)) 
-
 data[0,:,:] = biomass[:,:]
 
-print('Total biomass carbon')
-print(np.sum(biomass*area*1.0e-12))
-
-with Dataset(DataDir + "/biomass.nc", mode="w") as dset:
+with Dataset(DataDir + "biomass.nc", mode="w") as dset:
 
     # Create netCDF dimensions
     dset.createDimension("time",size=  t.size)
@@ -238,7 +200,7 @@ with Dataset(DataDir + "/biomass.nc", mode="w") as dset:
     dset.source      = "This dataset contains a global map of above-ground biomass of the epoch 2017 obtained from L-and C-band spaceborne SAR backscatter, placed onto a regular grid."
     dset.history     = """
 %s: downloaded source from %s;
-%s: convert original tif files to netcdf data using gdal_translate;
+%s: convert to ILAMB required spatial resolution;
 %s: converted biomass to biomass carbon and saved to ILAMB required netCDF with %s""" % (stamp1, remote_source, stamp2, stamp3, gist_source)
     dset.references  = """
 @ARTICLE{Santoro2019,
