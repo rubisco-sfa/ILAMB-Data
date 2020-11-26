@@ -2,7 +2,6 @@ import numpy as np
 from netCDF4 import Dataset
 import datetime
 import math
-from osgeo import gdal, ogr, osr
 
 # set up Data directory 
 DataDir = "./"
@@ -45,7 +44,7 @@ tbnd0  = np.asarray([((np.arange(nyears)*365)[:,np.newaxis]+month_bnd[:-1]).flat
 tbnd0 += (start_yr-1850)*365
 tbnd0.shape
 
-tbnd   = np.ma.masked_array(np.random.rand(1,2))
+tbnd   = np.ma.masked_array(np.zeros((1,2)))
 
 tbnd[0,0] = tbnd0[0,0]
 tbnd[0,1] = tbnd0[nyears-1,1]
@@ -63,13 +62,13 @@ lat    = latbnd.mean(axis=1)
 lon    = lonbnd.mean(axis=1)
 
 # Create some fake data
-data   = np.ma.masked_array(np.zero.rand(t.size,lat.size,lon.size))
-area   = np.ma.masked_array(np.zero.rand(lat.size,lon.size))
+data   = np.ma.masked_array(np.zeros((t.size,lat.size,lon.size)))
+area   = np.ma.masked_array(np.zeros((lat.size,lon.size)))
 
 nlat = lat.size
 nlon = lon.size
 
-R    = np.float64(6371007.181)
+R    = 6371007.181
 
 for ny in range(nlat):
     if ny == 0:
@@ -85,14 +84,8 @@ for ny in range(nlat):
         dx = R*math.cos(0.01745*lat[ny])*dlon
         area[ny,nx] = dx*dy
 
-def rebin(arr, new_shape):
-    """Rebin 2D array arr to shape new_shape by averaging."""
-    shape = (new_shape[0], arr.shape[0] // new_shape[0],
-             new_shape[1], arr.shape[1] // new_shape[1])
-    return arr.reshape(shape).mean(-1).mean(1)
-
 # read single netCDF file
-filename = DataDir + '/' + sourceID + '/' + local_source
+filename = DataDir + '/' + local_source
 ag=Dataset(filename,'r',format='NETCDF4')
 
 agb1 = ag.variables['agb']
@@ -110,7 +103,7 @@ nlon1 = lon1.size
 nlat2 = int(nlat1/2)
 nlon2 = int(nlon1/2)
 
-biomass = np.ma.masked_array(np.zero.rand(nlat,nlon), dtype=float64)
+biomass = np.ma.masked_array(np.zeros((nlat,nlon)))
 
 biomass[...] = 0.
 
@@ -146,7 +139,7 @@ biomass[:,:] = biomass[:,:]*1000.
 
 data[0,:,:] = biomass[:,:]
 
-with Dataset(DataDir + "biomass.nc", mode="w") as dset:
+with Dataset(DataDir + "biomass.nc", mode="w", zlib=True) as dset:
 
     # Create netCDF dimensions
     dset.createDimension("time",size=  t.size)
