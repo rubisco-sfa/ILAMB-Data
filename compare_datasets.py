@@ -6,14 +6,14 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-def CreateVariableComparisonArray(data,cmap,name,filename):
+def CreateVariableComparisonArray(data,cmap,name,filename,ncolors=7):
 
     # initialization stuff
-    mean_cmap = plt.cm.get_cmap(cmap,7)
-    bias_cmap = plt.cm.get_cmap("seismic",7)
+    mean_cmap = plt.cm.get_cmap(cmap,ncolors)
+    bias_cmap = plt.cm.get_cmap("seismic",ncolors)
     sources = sorted(list(data.keys()))
     n = len(data)
-
+    
     # interpolate all variables to a composed grid
     lat = None; lon = None
     for i in range(n):
@@ -27,7 +27,7 @@ def CreateVariableComparisonArray(data,cmap,name,filename):
     lon = np.unique(lon)
     for i in range(n):
         data[sources[i]] = data[sources[i]].interpolate(lat=lat,lon=lon)
-
+        
     # find limits of the difference
     bias = None
     for i in range(n):
@@ -39,6 +39,7 @@ def CreateVariableComparisonArray(data,cmap,name,filename):
                     bias = np.abs(a.data-b.data).compressed()
                 else:
                     bias = np.hstack([bias,np.abs(a.data-b.data).compressed()])
+            print(i,j,bias)
     bias = np.percentile(bias,98)
     
     # find limits of the mean
@@ -127,7 +128,7 @@ if __name__ == "__main__":
     r = Regions()
     r.addRegionNetCDF4(os.path.join(os.environ['ILAMB_ROOT'],"DATA/regions/GlobalLand.nc"))
     data_dir = "./"
-                 
+    """
     data = {}
     for fname in [os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/GEOCARBON/biomass_0.5x0.5.nc'),
                   os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/GLOBAL.CARBON/biomass_0.5x0.5.nc'),
@@ -188,13 +189,22 @@ if __name__ == "__main__":
         source = fname.split("/")[-2]
         data[source] = Variable(filename=fname,variable_name="hfss",alternate_vars=["sh"]).integrateInTime(mean=True).convert("W m-2")
     CreateVariableComparisonArray(data,"Oranges","Sensible Heat","hfss.png")
-    
+
     data = {}
     for fname in [os.path.join(os.environ['ILAMB_ROOT'],'DATA/gpp/GBAF/gpp_0.5x0.5.nc'),
                   os.path.join(data_dir,"FLUXCOM/gpp.nc"),
-                  os.path.join(data_dir,"WECANN/gpp.nc")]:
+                  os.path.join(data_dir,"WECANN/gpp.nc"),
+                  os.path.join(data_dir,"Kumar/gpp_0.5x0.5.nc")]:
         source = fname.split("/")[-2]
         data[source] = Variable(filename=fname,variable_name="gpp").integrateInTime(mean=True).convert("g m-2 d-1")
     CreateVariableComparisonArray(data,"Greens","Gross Primary Production","gpp.png")
+    """
 
+    data = {}
+    for fname in [os.path.join(data_dir,"Wang2021/mrsos_ec.nc"),
+                  os.path.join(data_dir,"Wang2021/mrsos_olc.nc")]:
+        token = fname.split("/")
+        source = token[-2] + token[-1].replace("mrsos_","").replace(".nc","").upper() 
+        data[source] = Variable(filename=fname,variable_name="mrsos").integrateInTime(mean=True)
+    CreateVariableComparisonArray(data,"Blues","Surface Soil Moisture","mrsos.png")
     

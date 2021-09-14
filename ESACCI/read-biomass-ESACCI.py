@@ -11,7 +11,6 @@ start_yr = 2017
 end_yr   = 2017
 
 remote_source = "https://climate.esa.int/en/odp/#/project"
-gist_source   = "https://github.com/mmu2019/Datasets/blob/master/read-biomass-ESACCI.py"
 local_source  = 'ESACCI-BIOMASS-L4-AGB-MERGED-100m-2017-fv1.0.nc'
 stamp1        = '2020-09-18'
 stamp2        = '2019-03-14'
@@ -139,7 +138,7 @@ biomass[:,:] = biomass[:,:]*1000.
 
 data[0,:,:] = biomass[:,:]
 
-with Dataset(DataDir + "biomass.nc", mode="w", zlib=True) as dset:
+with Dataset(DataDir + "biomass.nc", mode="w") as dset:
 
     # Create netCDF dimensions
     dset.createDimension("time",size=  t.size)
@@ -154,7 +153,7 @@ with Dataset(DataDir + "biomass.nc", mode="w", zlib=True) as dset:
     XB = dset.createVariable("lat_bounds" ,lat.dtype ,("lat","nb" ))
     Y  = dset.createVariable("lon"        ,lon.dtype ,("lon"      ))
     YB = dset.createVariable("lon_bounds" ,lon.dtype ,("lon","nb" ))
-    D  = dset.createVariable("biomass"    ,data.dtype,("time","lat","lon"), fill_value = -999.)
+    D  = dset.createVariable("biomass"    ,data.dtype,("time","lat","lon"), fill_value = -999., zlib=True)
 
     # Load data and encode attributes
     # time
@@ -194,7 +193,7 @@ with Dataset(DataDir + "biomass.nc", mode="w", zlib=True) as dset:
     dset.history     = """
 %s: downloaded source from %s;
 %s: convert to ILAMB required spatial resolution;
-%s: converted biomass to biomass carbon and saved to ILAMB required netCDF with %s""" % (stamp1, remote_source, stamp2, stamp3, gist_source)
+%s: converted biomass to biomass carbon and saved to ILAMB required netCDF""" % (stamp1, remote_source, stamp2, stamp3)
     dset.references  = """
 @ARTICLE{Santoro2019,
   author = {Santoro, M., Cartus, O.},

@@ -23,10 +23,6 @@ data_bnds = np.ma.masked_array(np.zeros(data.shape + (2,)),mask=False)
 data_bnds[0,...,0] = dset.variables["fBNF_1q"][0,...]
 data_bnds[0,...,1] = dset.variables["fBNF_3q"][0,...]
 
-# NOTE: the 1q and 3q values are currently set to the same values as fBNF
-print("fBNF    == fBNF_1q (%s)" % np.allclose(data            ,data_bnds[...,0]))
-print("fBNF_1q == fBNF_3q (%s)" % np.allclose(data_bnds[...,1],data_bnds[...,0]))
-
 with Dataset("fBNF_0.5x0.5.nc", mode="w") as oset:
 
     # dimensions
