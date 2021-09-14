@@ -8,8 +8,8 @@ from netCDF4 import Dataset
 
 rs = { 'ec_ors.nc':'https://drive.google.com/file/d/1fJnQ8P9WT6M1bSypbcZe2Cxqo_XwZsku/view?usp=sharing',
       'olc_ors.nc':'https://drive.google.com/file/d/1-v8QmowHzZrvUHWUdmSJw5rtwfxYJnfA/view?usp=sharing'}
-ds = { 'ec_ors.nc':'Emergent Constraint techqniue of Mystakidis, 2016 (https://doi.org/10.1111/gcb.13217)',
-      'olc_ors.nc':'Optimal Linear Combination technique of Hobeichi, 2018 (https://doi.org/10.5194/hess-22-1317-2018)'}
+ds = { 'ec_ors.nc':'emergent constraint technique of Mystakidis, 2016 (https://doi.org/10.1111/gcb.13217)',
+      'olc_ors.nc':'optimal linear combination technique of Hobeichi, 2018 (https://doi.org/10.5194/hess-22-1317-2018)'}
 for fname in rs:
     cf_name = "mrsos"
     var_name = "sm"
@@ -82,7 +82,7 @@ for fname in rs:
   volume = {13},
   issue = {9},
   page = {4385--4405},
-  doi = {10.5194/essd-13-4385-2021}
+  doi = {https://doi.org/10.5194/essd-13-4385-2021}
 }"""
         oset.comments = """
 time_period: %d-%02d through %d-%02d; temporal_resolution: monthly; spatial_resolution: 0.5 degree; units: %s""" % (dt[0].year,dt[0].month,dt[-1].year,dt[-1].month,D.units)
