@@ -58,6 +58,8 @@ for var_name in ['mrro','pr','dw','hfls','hfss','hfds','rs']:
     # write output
     data = np.ma.masked_invalid(data)
     data_bnds = np.ma.masked_invalid(data_bnds)
+    data     .data[data     .mask] = 1e20
+    data_bnds.data[data_bnds.mask] = 1e20
     with Dataset("%s.nc" % var_name, mode="w") as dset:
 
         # dimensions
@@ -92,7 +94,7 @@ for var_name in ['mrro','pr','dw','hfls','hfss','hfds','rs']:
         Y.units = "degrees_east"
                 
         # data
-        D = dset.createVariable(var_name, data.dtype, ("time", "lat", "lon"), zlib=True)
+        D = dset.createVariable(var_name, data.dtype, ("time", "lat", "lon"), fill_value=1e20, zlib=True)
         D[...] = data
         D.units = units
         D.standard_name = standard_name
@@ -100,7 +102,7 @@ for var_name in ['mrro','pr','dw','hfls','hfss','hfds','rs']:
         D.bounds = "%s_bnds" % (var_name)
 
         # data
-        DB = dset.createVariable("%s_bnds" % (var_name), data.dtype, ("time", "lat", "lon", "nb"), zlib=True)
+        DB = dset.createVariable("%s_bnds" % (var_name), data.dtype, ("time", "lat", "lon", "nb"), fill_value=1e20, zlib=True)
         DB[...] = data_bnds
         DB.units = units
         DB.standard_name = "standard error for %s" % standard_name

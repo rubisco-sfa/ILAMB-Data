@@ -82,7 +82,8 @@ for cf_name,var_name in zip(["gpp","reco","hfss","hfls","rns"],
         Y.units = "degrees_east"
     
         # data
-        D = oset.createVariable(cf_name, data.dtype, ("time", "lat", "lon"), zlib=True)
+        missing = data[data.mask].data[0]
+        D = oset.createVariable(cf_name, data.dtype, ("time", "lat", "lon"), zlib=True, fill_value=missing)
         D[...] = data
         D.units = dset[var_name].units.replace("gC","g")
         with np.errstate(invalid='ignore'):
