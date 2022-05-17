@@ -39,7 +39,6 @@ def CreateVariableComparisonArray(data,cmap,name,filename,ncolors=7):
                     bias = np.abs(a.data-b.data).compressed()
                 else:
                     bias = np.hstack([bias,np.abs(a.data-b.data).compressed()])
-            print(i,j,bias)
     bias = np.percentile(bias,98)
     
     # find limits of the mean
@@ -198,7 +197,6 @@ if __name__ == "__main__":
         source = fname.split("/")[-2]
         data[source] = Variable(filename=fname,variable_name="gpp").integrateInTime(mean=True).convert("g m-2 d-1")
     CreateVariableComparisonArray(data,"Greens","Gross Primary Production","gpp.png")
-    """
 
     data = {}
     for fname in [os.path.join(data_dir,"Wang2021/mrsos_ec.nc"),
@@ -208,3 +206,17 @@ if __name__ == "__main__":
         data[source] = Variable(filename=fname,variable_name="mrsos").integrateInTime(mean=True)
     CreateVariableComparisonArray(data,"Blues","Surface Soil Moisture","mrsos.png")
     
+    """
+    
+    data = {}
+    for fname in [#os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/GEOCARBON/biomass_0.5x0.5.nc'),
+                  os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/GLOBAL.CARBON/biomass_0.5x0.5.nc'),
+                  os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/NBCD2000/biomass_0.5x0.5.nc'),
+                  os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/Thurner/biomass_0.5x0.5.nc'),
+                  os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/Tropical/biomass_0.5x0.5.nc'),
+                  os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/US.FOREST/biomass_0.5x0.5.nc'),
+                  os.path.join(data_dir,"ESACCI/biomass.nc")]:
+        token = fname.split("/")
+        source = token[-2]
+        data[source] = Variable(filename=fname,variable_name="biomass").integrateInTime(mean=True).convert("kg m-2")
+    CreateVariableComparisonArray(data,"Greens","Above Ground Biomass","cVeg.png")
