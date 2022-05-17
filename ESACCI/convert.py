@@ -59,7 +59,7 @@ if __name__ == "__main__":
     ds.attrs['source'] = 'ALOS-2 PALSAR-2 FB and WB mosaics, Sentinel-1 GRD'
     ds.attrs['history'] = """
 %s: downloaded source from %s;
-%s: coarsened to 0.5 degree resolution using https://github.com/rubisco-sfa/ILAMB-Data/blob/master/ESACCI/read-biomass-ESACCI.py;""" % (download_stamp,remote_source,generate_stamp)
+%s: coarsened to 0.5 degree resolution using https://github.com/rubisco-sfa/ILAMB-Data/blob/master/ESACCI/convert.py;""" % (download_stamp,remote_source,generate_stamp)
     ds.attrs['references'] = """
 @ARTICLE{Santoro2021,
   author = {M. Santoro and O. Cartus},
