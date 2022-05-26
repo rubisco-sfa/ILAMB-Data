@@ -2,6 +2,8 @@ import os
 import time
 import xarray as xr
 from urllib.request import urlretrieve
+import numpy as np
+import cftime
 
 def CoarsenDataset(filename,outfile,res=0.5,ntile=10):
     """Coarsens the source dataset by using xarray and dask to avoid large memory.
@@ -48,9 +50,24 @@ if __name__ == "__main__":
 
     # Now we cleanup the file for ILAMB uses
     ds = xr.load_dataset("out.nc")
-    ds = ds.drop(['crs'])    
-    ds = ds.rename({'agb':'biomass','agb_se':'biomass_bnds'})
-    #ds['biomass'].attrs['bounds'] = 'biomass_bnds'
+    
+    # For some unknown reason, we need to re-create the biomass
+    # dataarray such that the encoding works out properly. I was
+    # having the problem that unit conversions didn't fail, but
+    # neither did they change the magnitudes of the data.
+    a = ds['agb'].attrs
+    ds['biomass'] = xr.DataArray(np.ma.masked_invalid(ds['agb'].to_numpy()),dims=('time','lat','lon'))
+    ds['biomass'].attrs = a
+    ds = ds.drop(['crs','agb','agb_se'])
+
+    # Having trouble with the time so let's just re-encode it
+    ds['time'] = [cftime.DatetimeNoLeap(t.dt.year,t.dt.month,t.dt.day) for t in ds['time']]
+    tb = np.asarray([[cftime.DatetimeNoLeap(t.dt.year  ,t.dt.month,1) for t in ds['time']],
+                     [cftime.DatetimeNoLeap(t.dt.year+1,1         ,1) for t in ds['time']]]).T
+    ds['time_bnds'] = xr.DataArray(tb,dims = ('time','nv'))
+    ds['time'].encoding['units']= "days since 2010-01-01"
+    ds['time'].attrs['bounds'] = 'time_bnds'
+
     ds = ds.reindex(lat=ds.lat[::-1])
     ds.attrs = {}
     ds.attrs['title'] = 'ESA CCI above-ground biomass product level'
@@ -69,4 +86,5 @@ if __name__ == "__main__":
   doi = {http://dx.doi.org/10.5285/5f331c418e9f4935b8eb1b836f8a91b8}
 }"""
     ds.to_netcdf("biomass.nc")
-    
+
+        
