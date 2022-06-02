@@ -41,15 +41,37 @@ ds['time'].encoding['units']= "days since 2003-01-01"
 ds['time'].attrs['bounds'] = 'time_bounds'
 
 for v in ['mrro','pr','hfls','hfss','hfdsl','rns']:
-    #ds[v].attrs['bounds'] = '%s_sd' % v
-    ds[v].to_netcdf("%s.nc" % v)
-    ds['time_bounds'].to_netcdf("%s.nc" % v,mode='a')
 
-    # uncertainty, for now I have this 2-sided, need to allow 1-sided
-    # note: the uncertainty for mrro and pr are causing large plotting ranges, fix!
-    #vb = '%s_sd' % v
-    #da = ds[vb]
-    #db = xr.concat([ds[v]-da,ds[v]+da],dim='nv').transpose("time","lat","lon","nv")
-    #db.name = vb
-    #db.to_netcdf("%s.nc" % v,mode='a')
-    
+    out = xr.Dataset({v:ds[v]})
+    out['time_bounds'] = ds['time_bounds']
+
+    attrs = {}
+    attrs['title'] = "Conserving Land-Atmosphere Synthesis Suite (CLASS) v1.1"
+    attrs['version'] = "1.1"
+    attrs['institution'] = "University of New South Wales"
+    attrs['source'] = "Ground Heat Flux (GLDAS, MERRALND, MERRAFLX, NCEP_DOII, NCEP_NCAR), Sensible Heat Flux(GLDAS, MERRALND, MERRAFLX, NCEP_DOII, NCEP_NCAR, MPIBGC, Princeton), Latent Heat Flux(DOLCE1.0), Net Radiation (GLDAS, MERRALND, NCEP_DOII, NCEP_NCAR, ERAI, EBAF4.0), Precipitation(REGEN1.1), Runoff(LORA1.0), Change in Water storage(GRACE(GFZ, JPL, CSR))"
+    attrs['history'] = """
+%s: downloaded source from %s
+%s: converted to ILAMB netCDF4 with %s""" % (stamp, "[" + ",".join(remote_sources) + "]", stamp, gist_source)
+    attrs['references'] = """
+@InCollection{Hobeichi2019,
+  author = 	 {Sanaa Hobeichi},
+  title = 	 {Conserving Land-Atmosphere Synthesis Suite (CLASS) v1.1},
+  booktitle = 	 {NCI National Research Data Collection},
+  doi =          {doi:10.25914/5c872258dc183},
+  year = 	 {2019}
+}
+@article{Hobeichi2020,
+    author = {Hobeichi, Sanaa and Abramowitz, Gab and Evans, Jason},
+    title = {Conserving Land–Atmosphere Synthesis Suite (CLASS)},
+    journal = {Journal of Climate},
+    volume = {33},
+    number = {5},
+    pages = {1821-1844},
+    year = {2020},
+    month = {01},
+    doi = {doi:10.1175/JCLI-D-19-0036.1},
+}
+"""
+    out.attrs = attrs
+    out.to_netcdf("%s.nc" % v)
