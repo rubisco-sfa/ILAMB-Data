@@ -51,7 +51,7 @@ if __name__ == "__main__":
     """
     for local_source in local_sources:
         ds = xr.open_dataset(local_source,engine='rasterio')
-        ds = ds.sel({'band':[1,2]})
+        ds = ds.sel({'band':[1,2,5,6]})
         ds = ds.rio.reproject('EPSG:4326')
         ds = ds.rename({'x':'lon','y':'lat'})
         CoarsenDataset(ds,local_source.replace(".tif",".nc"))

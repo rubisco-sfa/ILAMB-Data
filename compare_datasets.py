@@ -129,15 +129,6 @@ if __name__ == "__main__":
     data_dir = "./"
     """
     data = {}
-    for fname in [os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/GEOCARBON/biomass_0.5x0.5.nc'),
-                  os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/GLOBAL.CARBON/biomass_0.5x0.5.nc'),
-                  os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/Tropical/biomass_0.5x0.5.nc'),
-                  os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/Thurner/biomass_0.5x0.5.nc')]:
-        source = fname.split("/")[-2]
-        data[source] = Variable(filename=fname,variable_name="cVeg",alternate_vars=['biomass']).integrateInTime(mean=True).convert("kg m-2")
-    CreateVariableComparisonArray(data,"Greens","Biomass","cVeg.png")
-    
-    data = {}
     for fname in [os.path.join(os.environ['ILAMB_ROOT'],'DATA/reco/GBAF/reco_0.5x0.5.nc'),
                   os.path.join(data_dir,"FLUXCOM/reco.nc")]:
         source = fname.split("/")[-2]
@@ -205,9 +196,7 @@ if __name__ == "__main__":
         source = token[-2] + token[-1].replace("mrsos_","").replace(".nc","").upper() 
         data[source] = Variable(filename=fname,variable_name="mrsos").integrateInTime(mean=True)
     CreateVariableComparisonArray(data,"Blues","Surface Soil Moisture","mrsos.png")
-    
-    """
-    
+        
     data = {}
     for fname in [#os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/GEOCARBON/biomass_0.5x0.5.nc'),
                   os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/GLOBAL.CARBON/biomass_0.5x0.5.nc'),
@@ -220,3 +209,24 @@ if __name__ == "__main__":
         source = token[-2]
         data[source] = Variable(filename=fname,variable_name="biomass").integrateInTime(mean=True).convert("kg m-2")
     CreateVariableComparisonArray(data,"Greens","Above Ground Biomass","cVeg.png")
+    """
+    
+
+    data = {}
+    data['HWSD'] = Variable(filename=os.path.join(os.environ['ILAMB_ROOT'],'DATA/cSoil/HWSD/soilc_0.5x0.5.nc'),variable_name="cSoilAbove1m") # cSoil
+    data['Mishra'] = Variable(filename="Mishra/cSoil.nc",variable_name="cSoil")
+    data['NCSCD'] = Variable(filename="NCSCD/cSoil.nc",variable_name="cSoil")
+    for source,v in data.items():
+        if v.temporal: v = v.integrateInTime(mean=True)
+        data[source] = v
+    CreateVariableComparisonArray(data,"Purples","Soil Carbon","cSoil.png")
+    
+    data = {}
+    data['NCSCDV22'] = Variable(filename=os.path.join(os.environ['ILAMB_ROOT'],'DATA/cSoil/NCSCDV22/soilc_0.5x0.5.nc'),variable_name="cSoilAbove1m")
+    data['Mishra'] = Variable(filename="Mishra/cSoilAbove1m.nc",variable_name="cSoilAbove1m")
+    data['NCSCD'] = Variable(filename="NCSCD/cSoilAbove1m.nc",variable_name="cSoilAbove1m")
+    for source,v in data.items():
+        if v.temporal: v = v.integrateInTime(mean=True)
+        data[source] = v
+    CreateVariableComparisonArray(data,"Purples","Soil Carbon","cSoilAbove1m.png")
+    
