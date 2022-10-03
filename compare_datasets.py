@@ -209,9 +209,7 @@ if __name__ == "__main__":
         source = token[-2]
         data[source] = Variable(filename=fname,variable_name="biomass").integrateInTime(mean=True).convert("kg m-2")
     CreateVariableComparisonArray(data,"Greens","Above Ground Biomass","cVeg.png")
-    """
     
-
     data = {}
     data['HWSD'] = Variable(filename=os.path.join(os.environ['ILAMB_ROOT'],'DATA/cSoil/HWSD/soilc_0.5x0.5.nc'),variable_name="cSoilAbove1m") # cSoil
     data['Mishra'] = Variable(filename="Mishra/cSoil.nc",variable_name="cSoil")
@@ -230,3 +228,24 @@ if __name__ == "__main__":
         data[source] = v
     CreateVariableComparisonArray(data,"Purples","Soil Carbon","cSoilAbove1m.png")
     
+    """
+
+    total_to_agb = 0.7
+    total_to_carbon = 0.5
+    data = {
+        'GEOCARBON': os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/GEOCARBON/biomass_0.5x0.5.nc'),
+        'Thurner2013':os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/Thurner/biomass_0.5x0.5.nc'),
+        'Saatchi2011':os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/Tropical/biomass_0.5x0.5.nc'),
+        'USForest': os.path.join(os.environ['ILAMB_ROOT'],'DATA/biomass/US.FOREST/biomass_0.5x0.5.nc'),
+        'ESACCI': os.path.join(data_dir,"ESACCI/biomass.nc"),
+        'XuSaatchi2021': os.path.join(data_dir,"XuSaatchi/XuSaatchi.nc")
+    }    
+    for source in data:
+        data[source] = Variable(filename=data[source],variable_name="biomass").integrateInTime(mean=True).convert("kg m-2")
+
+    # make needed adjustments
+    for key in ['GEOCARBON','USForest','ESACCI']:
+        data[key].data *= (total_to_carbon / total_to_agb)
+        data[f"{key}*"] = data.pop(key)
+        
+    CreateVariableComparisonArray(data,"Greens","Total Biomass in Carbon Units","cVeg_adjusted.png")
