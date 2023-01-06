@@ -9,7 +9,6 @@ import xarray as xr
 src = intake.open_rasterio(
     "zip+https://figshare.com/ndownloader/files/12407516/Beck_KG_V1.zip!Beck_KG_V1_present_0p5.tif"
 )
-src.persist()
 da = src.read()
 da = da.sel({"band": 1})
 da = da.rename({"x": "lon", "y": "lat"}).drop(["band"])
