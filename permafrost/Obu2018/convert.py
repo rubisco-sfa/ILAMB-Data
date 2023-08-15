@@ -45,6 +45,22 @@ cls = (dsr["PerProb"] >= 0.9) * 1.0 + (dsr["PerProb"] < 0.9) * (
     dsr["PerProb"] >= 0.5
 ) * 2.0
 cls = xr.where(cls < 1e-6, np.nan, cls)
+
+# we will add a glacier mask to the data to help remove these areas from models, file
+# comes from the CESM/E3SM mask built from high resolution data.
+glacier_file = "pct_glacier.nc"
+if os.path.isfile(glacier_file):
+    da = xr.open_dataset("pct_glacier.nc")["PCT_GLACIER"]
+    res = 180.0 / da.lsmlat.size
+    da = da.assign_coords(
+        {
+            "lsmlat": (da.lsmlat + 0.5) * res - 90,
+            "lsmlon": ((((da.lsmlon + 0.5) * res + 180) % 360) - 180),
+        }
+    ).rename({"lsmlat": "y", "lsmlon": "x"})
+    da = da.interp(y=cls.y, x=cls.x, method="nearest")
+    cls = xr.where(da > 50, 0, cls)
+
 cls = cls.expand_dims({"time": [cftime.DatetimeNoLeap(2000, 1, 1)]})
 
 # convert to dataset and annotate
@@ -61,7 +77,7 @@ ds.attrs = {
     "version": "2019.04",
     "institutions": "Alfred Wegener Institute, Helmholtz Centre for Polar and Marine Research",
     "source": f"{remote_source}",
-    "history": f"Downloaded on {download_stamp} and generated netCDF file on {generate_stamp} with https://github.com/rubisco-sfa/ILAMB-Data/blob/main/NSIDC/convert.py",
+    "history": f"Downloaded on {download_stamp} and generated netCDF file on {generate_stamp} with https://github.com/rubisco-sfa/ILAMB-Data/blob/master/permafrost/Obu2018/convert.py. We have imposed a glaciated area mask in particular to remove much of Greenland where some models report soil temperatures.",
     "references": """
 @ARTICLE{Obu2018,
     author = {Jaroslav Obu and Sebastian Westermann and Andreas Kääb and Annett Bartsc,
@@ -72,7 +88,7 @@ ds.attrs = {
 }
 @ARTICLE{Obu2019,
     author = {Jaroslav Obu and Sebastian Westermann and Annett Bartsch and Nikolai Berdnikov and Hanne H. Christiansen and Avirmed Dashtseren and Reynald Delaloye and Bo Elberling and Bernd Etzelmüller and Alexander Kholodov and Artem Khomutov and Andreas Kääb and Marina O. Leibman and Antoni G. Lewkowicz and Santosh K. Panda and Vladimir Romanovsky and Robert G. Way and Andreas Westergaard-Nielsen and Tonghua Wu and Jambaljav Yamkhin and Defu Zou},
-    title= {Northern Hemisphere permafrost map based on TTOP modelling for 2000–2016 at 1 km2 scale},
+    title= {Northern Hemisphere permafrost map based on TTOP modelling for 2000-2016 at 1 km2 scale},
     journal = {Earth-Science Reviews},
     year = {2019},
     doi = {10.1016/j.earscirev.2019.04.023}

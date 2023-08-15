@@ -93,7 +93,7 @@ ds.attrs = {
     "version": "2",
     "institutions": "National Snow and Ice Data Center Distributed Active Archive Center",
     "source": f"Shapefiles obtained by: {CMD}",
-    "history": f"Downloaded on {download_stamp} and generated netCDF file on {generate_stamp} with https://github.com/rubisco-sfa/ILAMB-Data/blob/main/NSIDC/convert.py",
+    "history": f"Downloaded on {download_stamp} and generated netCDF file on {generate_stamp} with https://github.com/rubisco-sfa/ILAMB-Data/blob/master/permafrost/Brown2002/convert.py",
     "references": """
 @ARTICLE{,
     author = {Brown, J., O. Ferrians, J. A. Heginbottom, and E. Melnikov},
