@@ -51,3 +51,4 @@ ds = (
     .rename({"x": "lon", "y": "lat"})
 )
 ds = dset.coarsen_dataset(ds, res=0.5)
+ds.to_netcdf("coarsen_alt.nc")
