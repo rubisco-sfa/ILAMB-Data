@@ -1,79 +1,68 @@
-import xarray as xr
-import glob,time
-import numpy as np
-import pandas as pd
-from ILAMB.constants import mid_months,bnd_months
+import argparse
 import os
-from netCDF4 import Dataset
+import time
 
-rs = { 'ec_ors.nc':'https://drive.google.com/file/d/1fJnQ8P9WT6M1bSypbcZe2Cxqo_XwZsku/view?usp=sharing',
-      'olc_ors.nc':'https://drive.google.com/file/d/1-v8QmowHzZrvUHWUdmSJw5rtwfxYJnfA/view?usp=sharing'}
-ds = { 'ec_ors.nc':'emergent constraint technique of Mystakidis, 2016 (https://doi.org/10.1111/gcb.13217)',
-      'olc_ors.nc':'optimal linear combination technique of Hobeichi, 2018 (https://doi.org/10.5194/hess-22-1317-2018)'}
-for fname in rs:
-    cf_name = "mrsos"
-    var_name = "sm"
-    V = [fname]
-    remote_source = rs[fname]
-    dset = xr.open_dataset(V[0])
-    dset = dset.sel({'depth':0.1},method='nearest')
-    data = np.ma.masked_invalid(dset[var_name]) * 998. * 0.1 # vol-% to kg m-2
-    download_stamp = time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(V[0])))
-    generate_stamp = time.strftime('%Y-%m-%d')
-    dt = pd.to_datetime(dset.time.data)
-    t  = np.array([(t.year-1850)*365+mid_months[t.month-1] for t in dt])
-    tb = np.array([[(t.year-1850)*365+bnd_months[t.month-1],
-                    (t.year-1850)*365+bnd_months[t.month]] for t in dt])
-    lat = dset.lat
-    lon = dset.lon
-    with Dataset("%s_%s.nc" % (cf_name,fname.split("_")[0]), mode="w") as oset:
+import cftime
+import numpy as np
+import xarray as xr
 
-        # dimensions
-        oset.createDimension("time", size = t.size)
-        oset.createDimension("lat", size = lat.size)
-        oset.createDimension("lon", size = lon.size)
-        oset.createDimension("nb", size = 2)
-        
-        # time
-        T = oset.createVariable("time", t.dtype, ("time"))
-        T[...] = t
-        T.units = "days since 1850-01-01 00:00:00"
-        T.calendar = "noleap"
-        T.bounds = "time_bounds"
-        
-        # time bounds
-        TB = oset.createVariable("time_bounds", t.dtype, ("time", "nb"))
-        TB[...] = tb
-    
-        # latitude
-        X = oset.createVariable("lat", lat.dtype, ("lat"))
-        X[...] = lat
-        X.standard_name = "latitude"
-        X.long_name = "site latitude"
-        X.units = "degrees_north"
-    
-        # longitude
-        Y = oset.createVariable("lon", lon.dtype, ("lon"))
-        Y[...] = lon
-        Y.standard_name = "longitude"
-        Y.long_name = "site longitude"
-        Y.units = "degrees_east"
-    
-        # data
-        D = oset.createVariable(cf_name, data.dtype, ("time", "lat", "lon"), zlib=True)
-        D[...] = data
-        D.units = "kg m-2"
-        with np.errstate(invalid='ignore'):
-            D.actual_range = np.asarray([data.min(),data.max()])
+# setup some simple argument parsing to avoid a loop and indentation
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "-f", dest="local_source", default="ec_ors.nc", help="source netcdf file"
+)
+args = parser.parse_args()
+method = {
+    "ec_ors.nc": "emergent constraint technique of (Mystakidis, 2016)",
+    "olc_ors.nc": "optimal linear combination technique of (Hobeichi, 2018)",
+}
 
-        oset.title = "Observation-based global multilayer soil moisture products for 1970 to 2016"
-        oset.version = "1"
-        oset.institutions = "Oak Ridge National Laboratory"
-        oset.source = "Offline land surface models, reanalysis, and satellite soil moisture datasets combined using the %s" % ds[fname]
-        oset.history = """
-%s: downloaded %s;
-%s: selected top 10cm, converted unit from vol-%% to kg m-2""" % (download_stamp, remote_source, generate_stamp)
-        oset.references  = """
+# get some timestamp information
+download_stamp = time.strftime(
+    "%Y-%m-%d", time.localtime(os.path.getctime(args.local_source))
+)
+generate_stamp = time.strftime("%Y-%m-%d")
+
+# just 'open' the dataset and don't 'load' until you need to
+ds = xr.open_dataset(args.local_source)
+
+# add bounds to time, by default ILAMB uses a noleap calendar
+tbnd = np.array(
+    [
+        [cftime.DatetimeNoLeap(t.dt.year, t.dt.month, 1) for t in ds["time"]],
+        [
+            cftime.DatetimeNoLeap(
+                t.dt.year if t.dt.month < 12 else t.dt.year + 1,
+                (t.dt.month + 1) if t.dt.month < 12 else 1,
+                1,
+            )
+            for t in ds["time"]
+        ],
+    ]
+).T
+
+# Rewrite the time to be the middle of the time interval using the noleap calendar
+ds["time"] = [cftime.DatetimeNoLeap(t.dt.year, t.dt.month, 15) for t in ds["time"]]
+ds["time_bnds"] = (("time", "bnds"), tbnd)
+
+# depth is missing a bounds attribute
+ds["depth"].attrs["bounds"] = "depth_bnds"
+
+# rename sm and remove the standard deviation for now
+ds = ds.rename({"sm": "mrso"}).drop("std")
+
+# convert % to kg m-2
+ds["mrso"] = ds["mrso"] * ds["depth_bnds"].diff(dim="bnds").squeeze() * 998.0
+ds["mrso"].attrs = {"standard_name": "soil_moisture_content", "units": "kg m-2"}
+
+# add all the global attributes
+ds.attrs = {
+    "title": f"Observation-based global multilayer soil moisture products for 1970 to 2016 using {method[args.local_source]}",
+    "version": "1",
+    "institutions": "Oak Ridge National Laboratory",
+    "source": f"{args.local_source} from https://drive.google.com/drive/folders/1bm57jo6yUHGJ0P-sfPwA4NM5VCzSLoUr",
+    "history": f"Downloaded on {download_stamp} and generated netCDF file on {generate_stamp} with https://github.com/rubisco-sfa/ILAMB-Data/blob/master/Wang2021/convert.py. Converted to mass area density and compressed to reduce file size.",
+    "references": """
 @ARTICLE{Wang2021,
   author = {Wang, Y. and Mao, J. and Jin, M. and Hoffman, F. M. and Shi, X. and Wullschleger, S. D. and Dai, Y.},
   title = {Development of observation-based global multilayer soil moisture products for 1970 to 2016},
@@ -83,7 +72,23 @@ for fname in rs:
   issue = {9},
   page = {4385--4405},
   doi = {https://doi.org/10.5194/essd-13-4385-2021}
-}"""
-        oset.comments = """
-time_period: %d-%02d through %d-%02d; temporal_resolution: monthly; spatial_resolution: 0.5 degree; units: %s""" % (dt[0].year,dt[0].month,dt[-1].year,dt[-1].month,D.units)
-        oset.convention = "CF-1.8"
+}
+@ARTICLE{Wang2021a,
+  author = "Yaoping Wang and Jiafu Mao",
+  title = "Global Multi-layer Soil Moisture Products",
+  year = "2021",
+  doi = "10.6084/m9.figshare.13661312.v1"
+}
+""",
+}
+
+# remember to turn on compression, and the time needs encoding information to be
+# self-consistent
+ds.to_netcdf(
+    f"mrso_{args.local_source.split('_')[0]}.nc",
+    encoding={
+        "time": {"units": "days since 1850-01-01", "bounds": "time_bnds"},
+        "time_bnds": {"units": "days since 1850-01-01"},
+        "mrso": {"zlib": True},  # <-- turns on compression for this variable
+    },
+)
