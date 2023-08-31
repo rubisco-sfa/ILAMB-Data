@@ -49,11 +49,11 @@ ds["time_bnds"] = (("time", "bnds"), tbnd)
 ds["depth"].attrs["bounds"] = "depth_bnds"
 
 # rename sm and remove the standard deviation for now
-ds = ds.rename({"sm": "mrso"}).drop("std")
+ds = ds.rename({"sm": "mrsol"}).drop("std")
 
 # convert % to kg m-2
-ds["mrso"] = ds["mrso"] * ds["depth_bnds"].diff(dim="bnds").squeeze() * 998.0
-ds["mrso"].attrs = {"standard_name": "soil_moisture_content", "units": "kg m-2"}
+ds["mrsol"] = ds["mrsol"] * ds["depth_bnds"].diff(dim="bnds").squeeze() * 998.0
+ds["mrsol"].attrs = {"standard_name": "soil_moisture_content", "units": "kg m-2"}
 
 # add all the global attributes
 ds.attrs = {
@@ -85,10 +85,10 @@ ds.attrs = {
 # remember to turn on compression, and the time needs encoding information to be
 # self-consistent
 ds.to_netcdf(
-    f"mrso_{args.local_source.split('_')[0]}.nc",
+    f"mrsol_{args.local_source.split('_')[0]}.nc",
     encoding={
         "time": {"units": "days since 1850-01-01", "bounds": "time_bnds"},
         "time_bnds": {"units": "days since 1850-01-01"},
-        "mrso": {"zlib": True},  # <-- turns on compression for this variable
+        "mrsol": {"zlib": True},  # <-- turns on compression for this variable
     },
 )
