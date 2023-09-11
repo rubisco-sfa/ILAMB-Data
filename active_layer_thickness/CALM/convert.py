@@ -83,7 +83,9 @@ df = df.rename(
 )
 
 # Mistake in the source data
-if df.loc[df["Site Name"] == "Andryushkino", "LAT"] < 60:
+query = df[df["Site Name"] == "Andryushkino"]
+assert len(query) == 1
+if query["LAT"].iloc[0] < 60:
     df.loc[df["Site Name"] == "Andryushkino", "LAT"] += 60.0
 
 # Cleanup the string columns
@@ -125,8 +127,8 @@ for col in ["LAT", "LONG"]:
 
 tb = np.array(
     [
-        [cf.DatetimeAllLeap(y, 1, 1) for y in years],
-        [cf.DatetimeAllLeap(y + 1, 1, 1) for y in years],
+        [cf.DatetimeNoLeap(y, 1, 1) for y in years],
+        [cf.DatetimeNoLeap(y + 1, 1, 1) for y in years],
     ]
 ).T
 t = np.array([tb[i, 0] + 0.5 * (tb[i, 1] - tb[i, 0]) for i in range(tb.shape[0])])
