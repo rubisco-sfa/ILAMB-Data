@@ -40,7 +40,8 @@ download_stamp = time.strftime(
 )
 generate_stamp = time.strftime("%Y-%m-%d")
 
-# I tried using the rasterio engine inside of xarray.open_mfdataset() but
+# I tried using the rasterio engine inside of xarray.open_mfdataset() but was having
+# hangs that I couldn't explain.
 das = []
 for f in tqdm(range(len(local_sources))):
     filename = local_sources[f]
@@ -72,7 +73,9 @@ ds["time_bnds"] = xr.DataArray(
         [
             cftime.DatetimeNoLeap(t.dt.year, t.dt.month, 1),
             cftime.DatetimeNoLeap(
-                t.dt.year + (t.dt.month == 12), 1 if t.dt.month == 12 else t.dt.month, 1
+                t.dt.year + (t.dt.month == 12),
+                1 if t.dt.month == 12 else (t.dt.month + 1),
+                1,
             ),
         ]
         for t in ds["time"]
