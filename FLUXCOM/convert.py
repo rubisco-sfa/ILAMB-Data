@@ -1,104 +1,90 @@
-import xarray as xr
-import glob,time
-import numpy as np
-import pandas as pd
-from ILAMB.constants import mid_months,bnd_months
+import glob
 import os
-from netCDF4 import Dataset
+import time
+from pathlib import Path
 
-""" The observational data cannot be downloaded automatically. You
-will need to register with the FluxCom Data Portal:
+import cftime as cf
+import numpy as np
+import xarray as xr
+from ilamb3.dataset import compute_cell_measures
 
-https://www.bgc-jena.mpg.de/geodb/projects/Home.php
 
-and then with the username and password you will receive, download the
-Artificial Neural Network (ANN) data found in the 'remote_source'
-variable below.
+def fix_time_monthly(ds: xr.Dataset) -> xr.Dataset:
+    # Re-encode time to use the ILAMB standard noleap calendar and include bounds
+    if "time_bounds" in ds:
+        ds = ds.drop("time_bounds")
+    ds["time"] = [cf.DatetimeNoLeap(t.dt.year, t.dt.month, 15) for t in ds["time"]]
+    ds["time_bnds"] = (
+        ("time", "nbnds"),
+        np.asarray(
+            [
+                [cf.DatetimeNoLeap(t.dt.year, t.dt.month, 1) for t in ds["time"]],
+                [
+                    cf.DatetimeNoLeap(
+                        t.dt.year + 1 * (t.dt.month == 12),
+                        t.dt.month + 1 if (t.dt.month < 12) else 1,
+                        1,
+                    )
+                    for t in ds["time"]
+                ],
+            ]
+        ).T,
+    )
+    return ds
 
-In addition to copying the data into a single netCDF file for use in
-ILAMB, we have found a number of values mostly near coastlines which
-are hard zeros for all times defined in the dataset. We believe these
-to be artifacts of the neural network and not true zeros. Thus we
-apply an additional mask to areas which are a hard zero (less than
-1e-15) for all times defined.
-"""
-def CheckFileList(V):
-    v0 = V[0].split(".")
-    y0 = int(v0[-2])
-    vf = V[-1].split(".")
-    yf = int(vf[-2])
-    v0[-2] = "****"
-    assert (yf-y0+1)==len(V)
-    return ".".join(v0)
-    
-for cf_name,var_name in zip(["gpp","reco","hfss","hfls","rns"],
-                            ["GPP","TER" ,"H"   ,"LE"  ,"Rn" ]):
-    V = sorted(glob.glob("%s*.nc" % var_name))
-    if len(V) == 0: continue
-    remote_source = CheckFileList(V)
-    dset = xr.concat([xr.open_dataset(f) for f in V],dim="time")
-    data = np.ma.masked_invalid(dset[var_name])
-    mask = np.ones(data.shape[0],dtype=bool)[:,np.newaxis,np.newaxis]*(np.abs(data)<1e-15).all(axis=0)
-    data = np.ma.masked_array(data,mask=data.mask+mask)
-    download_stamp = time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(V[0])))
-    generate_stamp = time.strftime('%Y-%m-%d')
-    dt = pd.to_datetime(dset.time.data)
-    t  = np.array([(t.year-1850)*365+mid_months[t.month-1] for t in dt])
-    tb = np.array([[(t.year-1850)*365+bnd_months[t.month-1],
-                    (t.year-1850)*365+bnd_months[t.month]] for t in dt])
-    lat = dset.lat
-    lon = dset.lon
-    with Dataset("%s.nc" % cf_name, mode="w") as oset:
 
-        # dimensions
-        oset.createDimension("time", size = t.size)
-        oset.createDimension("lat", size = lat.size)
-        oset.createDimension("lon", size = lon.size)
-        oset.createDimension("nb", size = 2)
-        
-        # time
-        T = oset.createVariable("time", t.dtype, ("time"))
-        T[...] = t
-        T.units = "days since 1850-01-01 00:00:00"
-        T.calendar = "noleap"
-        T.bounds = "time_bounds"
-        
-        # time bounds
-        TB = oset.createVariable("time_bounds", t.dtype, ("time", "nb"))
-        TB[...] = tb
-    
-        # latitude
-        X = oset.createVariable("lat", lat.dtype, ("lat"))
-        X[...] = lat
-        X.standard_name = "latitude"
-        X.long_name = "site latitude"
-        X.units = "degrees_north"
-    
-        # longitude
-        Y = oset.createVariable("lon", lon.dtype, ("lon"))
-        Y[...] = lon
-        Y.standard_name = "longitude"
-        Y.long_name = "site longitude"
-        Y.units = "degrees_east"
-    
-        # data
-        missing = data[data.mask].data[0]
-        D = oset.createVariable(cf_name, data.dtype, ("time", "lat", "lon"), zlib=True, fill_value=missing)
-        D[...] = data
-        D.units = dset[var_name].units.replace("gC","g")
-        with np.errstate(invalid='ignore'):
-            D.actual_range = np.asarray([data.min(),data.max()])
+# FluxCom provides a land fraction mask which we will incorporate as cell measures for
+# ilamb to use in spatial integration.
+cm = xr.open_dataset("raw/landfraction.720.360.nc") * 0.01
+cm *= compute_cell_measures(cm)
+cm = cm.rename(dict(landfraction="cell_measures", latitude="lat", longitude="lon"))
+cm = cm.pint.dequantify()
+cm = cm["cell_measures"]
+cm.attrs = {"long_name": "land_area", "units": "m2"}
 
-        oset.title = "FLUXCOM (RS+METEO) Global Land Carbon Fluxes using CRUNCEP climate data"
-        oset.version = "1"
-        oset.institutions = "Department Biogeochemical Integration, Max Planck Institute for Biogeochemistry, Germany"
-        oset.source = """Data generated by Artificial Neural Networks and forced with CRUNCEPv6 meteorological data and MODIS (RS+METEO)
+# Loop through the variables and create the datasets.
+fluxcom_to_cmip = dict(GPP="gpp", H="hfss", LE="hfls", TER="reco")
+generate_stamp = time.strftime("%Y-%m-%d")
+for fluxcom, cmip in fluxcom_to_cmip.items():
+    # What files are we using?
+    files = glob.glob(f"raw/{fluxcom}.*.nc")
+    if not files:
+        continue
+    download_stamp = time.strftime(
+        "%Y-%m-%d", time.localtime(os.path.getctime(files[0]))
+    )
+
+    # Merge into a single dataset
+    ds = xr.concat([xr.load_dataset(f) for f in files], data_vars="minimal", dim="time")
+    ds = ds.rename_vars({fluxcom: cmip})
+
+    # Fix some locations that are all zero for all time
+    ds[cmip] = xr.where(
+        ~((np.abs(ds[cmip]) < 1e-15).all(dim="time")), ds[cmip], np.nan, keep_attrs=True
+    )
+
+    # Add measures and bounds
+    ds["cell_measures"] = cm
+    ds = fix_time_monthly(ds)
+    if "lat_bnds" not in ds:
+        ds = ds.cf.add_bounds(["lat", "lon"])
+    if "lat_bounds" in ds:
+        ds = ds.rename(dict(lat_bounds="lat_bnds", lon_bounds="lon_bnds"))
+    ds["lat"].attrs["bounds"] = "lat_bnds"
+    ds["lon"].attrs["bounds"] = "lon_bnds"
+
+    # Add attributes
+    ds.attrs = dict(
+        title="FLUXCOM (RS+METEO) Global Land Carbon Fluxes using CRUNCEP climate data",
+        version="1",
+        institutions="Department Biogeochemical Integration, Max Planck Institute for Biogeochemistry, Germany",
+        source="""Data generated by Artificial Neural Networks and forced with CRUNCEPv6 meteorological data and MODIS (RS+METEO)
 ftp://ftp.bgc-jena.mpg.de/pub/outgoing/FluxCom/CarbonFluxes_v1_2017/RS+METEO/CRUNCEPv6/raw/monthly/
-ftp://ftp.bgc-jena.mpg.de/pub/outgoing/FluxCom/EnergyFluxes/RS_METEO/member/CRUNCEP_v8/monthly/"""
-        oset.history = """
-%s: downloaded %s;
-%s: converted to netCDF, additionally we apply a mask where |var|<1e-15 for all time.""" % (download_stamp, remote_source, generate_stamp)
-        oset.references  = """
+ftp://ftp.bgc-jena.mpg.de/pub/outgoing/FluxCom/EnergyFluxes/RS_METEO/member/CRUNCEP_v8/monthly/""",
+        history=f"""
+{download_stamp}: downloaded {[Path(f).name for f in files]};
+{generate_stamp}: converted to netCDF, additionally we apply a mask where |var|<1e-15 for all time.""",
+        references="""
 @ARTICLE{Jung2019,
   author = {Jung, M., S. Koirala, U. Weber, K. Ichii, F. Gans, Gustau-Camps-Valls, D. Papale, C. Schwalm, G. Tramontana, and M. Reichstein},
   title = {The FLUXCOM ensemble of global land-atmosphere energy fluxes},
@@ -117,8 +103,13 @@ ftp://ftp.bgc-jena.mpg.de/pub/outgoing/FluxCom/EnergyFluxes/RS_METEO/member/CRUN
   number = {13},
   page = {4291-4313},
   doi = {https://doi.org/10.5194/bg-13-4291-2016}
-}"""
-        oset.comments = """
-time_period: %d-%02d through %d-%02d; temporal_resolution: monthly; spatial_resolution: 0.5 degree; units: %s""" % (dt[0].year,dt[0].month,dt[-1].year,dt[-1].month,D.units)
-        oset.convention = "CF-1.8"
-
+}""",
+    )
+    ds.to_netcdf(
+        f"{cmip}.nc",
+        encoding={
+            "time": {"units": "days since 1850-01-01", "bounds": "time_bnds"},
+            "time_bnds": {"units": "days since 1850-01-01"},
+            cmip: {"zlib": True},
+        },
+    )
