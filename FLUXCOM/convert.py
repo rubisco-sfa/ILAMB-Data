@@ -63,6 +63,11 @@ for fluxcom, cmip in fluxcom_to_cmip.items():
         ~((np.abs(ds[cmip]) < 1e-15).all(dim="time")), ds[cmip], np.nan, keep_attrs=True
     )
 
+    # Fix units, I get it but unit conversion systems don't understand this
+    if "gC" in ds[cmip].attrs["units"]:
+        ds[cmip].attrs["units"] = ds[cmip].attrs["units"].replace("gC", "g")
+    ds.pint.quantify()
+
     # Add measures and bounds
     ds["cell_measures"] = cm
     ds = fix_time_monthly(ds)
