@@ -77,6 +77,7 @@ for fluxcom, cmip in fluxcom_to_cmip.items():
         ds = ds.rename(dict(lat_bounds="lat_bnds", lon_bounds="lon_bnds"))
     ds["lat"].attrs["bounds"] = "lat_bnds"
     ds["lon"].attrs["bounds"] = "lon_bnds"
+    ds[cmip] = ds[cmip].transpose("time", "lat", "lon")
 
     # Add attributes
     ds.attrs = dict(
