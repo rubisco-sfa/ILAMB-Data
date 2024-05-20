@@ -1,3 +1,5 @@
 *.tif
-*.ipynb_checkpoints
 *.nc
+*.ipynb
+*.ipynb_checkpoints
+ILAMB_sample/
