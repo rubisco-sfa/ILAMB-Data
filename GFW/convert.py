@@ -12,7 +12,7 @@ from urllib.request import urlretrieve
 sdate = datetime.datetime(2020, 1, 1, 0, 0, 0)
 edate = datetime.datetime(2050, 1, 1, 0, 0, 0)
 proj = 'EPSG:4326'
-github_path = 'https://github.com/rubisco-sfa/ILAMB-Data/blob/msteckler/GFW/convert.py'
+github_path = 'https://github.com/rubisco-sfa/ILAMB-Data/blob/master/GFW/convert.py'
 
 # data sources
 remote_data = 'https://www.arcgis.com/sharing/rest/content/items/f950ea7878e143258a495daddea90cc0/data'
@@ -60,7 +60,7 @@ tb_arr = np.asarray([
     [cf.DatetimeNoLeap(edate.year, edate.month, edate.day)]
 ]).T
 
-# xarray data array of time bounds
+# np array to xr data array (time bounds)
 tb_da = xr.DataArray(tb_arr, dims=('time', 'nv'))
 
 # add time dimension and time bounds attribute
@@ -92,9 +92,9 @@ x_attrs = {
 v_attrs = {
     'long_name': 'mean aboveground biomass carbon accumulation rate',
     'units': 'Mg ha-1 yr-1',
-    'ancillary_variables': 'fVeg standard_error'}
+    'ancillary_variables': 'standard_error'}
 e_attrs = {
-    'long_name': 'standard error in mean aboveground biomass carbon accumulation rates',
+    'long_name': 'fVeg standard_error',
     'units': 1}
 
 # set attributes
@@ -105,7 +105,7 @@ ds['lon'].attrs = x_attrs
 ds['fVeg'].attrs = v_attrs
 ds['standard_error'].attrs = e_attrs
 
-#to_netcdf will fail without this encoding:
+# to_netcdf will fail without this encoding:
 ds['time'].encoding['units'] = f'days since {sdate.strftime("%Y-%m-%d %H:%M:%S")}'
 ds['time'].encoding['calendar'] = 'noleap'
 ds['time'].encoding['bounds'] = 'time_bounds'
@@ -114,25 +114,26 @@ ds['time_bounds'].encoding['units'] = f'days since {sdate.strftime("%Y-%m-%d %H:
 # function to convert units
 def convert_units(data_array, target_units):
     
-    # create a cfunits.Units object for the target units
+    # create unit objects
     original_units = data_array.attrs.get('units', None) 
     original_units_obj = cfunits.Units(original_units)
     target_units_obj = cfunits.Units(target_units)
     
-    # convert
+    # convert original to target unit
     new_array = cfunits.Units.conform(data_array, original_units_obj, target_units_obj)
     
-    # create a new DataArray with converted values and update units
+    # create a new xr data array with converted values
     new_data_array = xr.DataArray(
         new_array,
         dims=data_array.dims,
         coords=data_array.coords,
         attrs=data_array.attrs)
     
+    # update units attribute
     new_data_array.attrs['units'] = target_units
     return new_data_array
 
-# Convert air temperature from Kelvin to Celsius
+# apply unit conversion function
 ds['fVeg'] = convert_units(ds['fVeg'], 'kg m-2 s-1')
 
 # edit global attributes
@@ -164,6 +165,7 @@ doi     = {10.1038/s41586-020-2686-x}}""",
 ds['lat'] = ds['lat'].astype('float32')
 ds['lon'] = ds['lon'].astype('float32')
 ds = ds.drop_vars('spatial_ref')
+# sort latitude coords: negative to positive
 ds = ds.reindex(lat=list(reversed(ds.lat)))
 
 # export
