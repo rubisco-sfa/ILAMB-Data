@@ -79,21 +79,21 @@ if __name__ == "__main__":
     ds.attrs["version"] = "3"
     ds.attrs["institution"] = "GEOCARBON (European FP7 project)"
     ds.attrs["source"] = (
-        "Files are available https://www.bgc-jena.mpg.de/geodb/projects/Home.php"
+        """Combines and harmonizing the pan-tropical biomass map by Avitabile et al. (2016) with the boreal forest biomass map by Santoro et al. (2015) covering forest areas, where forest are defined as areas with dominance of tree cover in the GLC2000 map (Bartholomé and Belward, 2005)."""
     )
     ds.attrs[
         "history"
     ] = f"""
-{download_stamp}: downloaded source from {remote_source};
+{download_stamp}: downloaded source from https://www.bgc-jena.mpg.de/geodb/projects/Data.php;
 {generate_stamp}: coarsened to 0.5 degree resolution using https://github.com/rubisco-sfa/ILAMB-Data/blob/master/biomass/GEOCARBON/convert.py;"""
 
     ds.attrs[
         "references"
     ] = """
 @ARTICLE{GEOCARBON,
-  author = {GEOCARBON},
-  title = {Operational Global Carbon Observing System},
-  journal = {ENV.2011.4.1.1-1},
-  year = {283080},
+  author = {Avitabile, V., Herold, M., Lewis, S.L., Phillips, O.L., Aguilar-Amuchastegui, N., Asner, G. P., Brienen, R.J.W., DeVries, B., Cazzolla Gatti, R., Feldpausch, T.R., Girardin, C., de Jong, B., Kearsley, E., Klop, E., Lin, X., Lindsell, J., Lopez-Gonzalez, G., Lucas, R., Malhi, Y., Morel, A.,  Mitchard, E., Pandey, D., Piao, S., Ryan, C., Sales, M., Santoro, M., Vaglio Laurin, G., Valentini, R., Verbeeck, H., Wijaya, A., Willcock, S.},
+  title = {Comparative analysis and fusion for improved global biomass mapping.},
+  journal = {Global Vegetation Monitoring and Modeling Workshop},
+  year = {2014},
 }"""
     ds.to_netcdf("biomass.nc", encoding={"biomass": {"zlib": True}})
