@@ -1,14 +1,14 @@
 """Downloads the XuSaatchi Biomass dataset and converts to netCDF, bringing up
 to ILAMB/CF standards."""
+
 import os
 import time
 
 import cftime
+import ilamblib as il
 import numpy as np
 import requests
 import xarray as xr
-
-import ilamblib as il
 
 SHOW_PLOTS = False
 
