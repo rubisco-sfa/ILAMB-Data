@@ -4,7 +4,7 @@ on:
     branches:
       - master
 jobs:
-  Run dataset conversion scripts:
+  Convert:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
