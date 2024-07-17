@@ -11,8 +11,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Execute all python changed files
         uses: jitterbit/get-changed-files@v1
-        with:
-          format: 'py'
       - run: |
           for changed_file in ${{ steps.files.outputs.all }}; do
             echo "Do something with this ${changed_file}."
