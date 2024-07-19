@@ -1,6 +1,7 @@
 *.tif
 *.nc
 *.ipynb
+*.sha256
 *.ipynb_checkpoints
 ILAMB_sample/
 HWSD2/

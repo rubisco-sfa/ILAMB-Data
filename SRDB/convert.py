@@ -7,9 +7,7 @@ import numpy as np
 import cftime as cf
 import cfunits
 import earthaccess
-from urllib.request import urlretrieve
 from earthaccess import DataCollections
-import matplotlib.pyplot as plt
 
 #####################################################
 # set the parameters for this particular dataset
@@ -23,7 +21,7 @@ proj = 'EPSG:4326'
 short_name = 'Rs'
 long_name = 'mean annual autotrophic and heterotrophic soil respiration'
 uncertainty = 'standard_deviation'
-units = 'g m-2 y-1'
+units = 'g m-2 yr-1'
 target_units = 'kg m-2 s-1'
 target_res = 0.5
 
@@ -42,7 +40,7 @@ def download_rs_data(local_data, cwd):
     
     print("""
     An Earthdata username and password is required to download this data. 
-    Create an account here: https://urs.earthdata.nasa.gov/users/new')\n"""
+    Create a free account here: https://urs.earthdata.nasa.gov/users/new')\n"""
          )
     auth = earthaccess.login() # user must input username/password
 
@@ -96,25 +94,8 @@ def convert_units(data_array, target_units):
     
     # Get the original units from the data array attributes
     original_units = data_array.attrs.get('units', None)
-    if original_units is None:
-        raise ValueError('Original units not found in data array attributes.')
-    
-    # Create unit objects for original and target units
     original_units_obj = cfunits.Units(original_units)
     target_units_obj = cfunits.Units(target_units)
-    
-    # Handle specific cases with intermediate conversion steps
-    if original_units == 'g m-2 y-1' and target_units == 'kg m-2 s-1':
-        
-        # Step 1: Convert grams to kilograms
-        data_array = data_array * 1e-3  # grams to kilograms
-        data_array.attrs['units'] = 'kg m-2 y-1'
-        
-        # Step 2: Convert per year to per second
-        data_array = data_array / (365 * 24 * 3600)  # years to seconds
-        data_array.attrs['units'] = 'kg m-2 s-1'
-
-    original_units_obj = cfunits.Units(data_array.attrs.get('units', None))
         
     # Convert original to target unit using cfunits
     new_array = cfunits.Units.conform(data_array, original_units_obj, target_units_obj)
