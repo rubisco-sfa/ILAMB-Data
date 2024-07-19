@@ -1,0 +1,19 @@
+name: Generate ILAMB-ready dataset
+on:
+  pull_request:
+    branches:
+      - master
+jobs:
+  Run dataset conversion scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Execute all python changed files
+        uses: jitterbit/get-changed-files@v1
+        with:
+          format: 'py'
+      - run: |
+          for changed_file in ${{ steps.files.outputs.all }}; do
+            echo "Do something with this ${changed_file}."
+          done

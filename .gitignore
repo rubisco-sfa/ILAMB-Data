@@ -2,6 +2,8 @@
 *.nc
 *.ipynb
 *.sha256
+*.sqlite
 *.ipynb_checkpoints
 ILAMB_sample/
-HWSD2/
+HWSD2_RASTER/
+wise_30sec_v1/
