@@ -1,6 +1,7 @@
 *.tif
 *.nc
 *.ipynb
+*.sha256
 *.sqlite
 *.ipynb_checkpoints
 ILAMB_sample/
