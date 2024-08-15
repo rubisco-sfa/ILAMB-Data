@@ -1,9 +1,11 @@
+.gitignore
 *.tif
 *.nc
 *.ipynb
 *.sha256
 *.sqlite
 *.ipynb_checkpoints
+/GIMMS_LAI4g/GIMMS_LAI4g*
 ILAMB_sample/
 HWSD2_RASTER/
 wise_30sec_v1/
