@@ -22,6 +22,7 @@ github_path = 'https://github.com/rubisco-sfa/ILAMB-Data/blob/master/GIMMS_LAIg4
 var = 'lai'
 long_name = 'leaf_area_index'
 output_path = 'cao2023.nc'
+conversion_factor = .001
 
 # filter specific warning
 warnings.filterwarnings("ignore", category=Warning, message=".*TIFFReadDirectory:Sum of Photometric type-related color channels and ExtraSamples doesn't match SamplesPerPixel.*")
@@ -88,6 +89,8 @@ def open_grouped_tifs(raster_dict):
             for submonth_path in submonth_paths:
                 submonth_data = rxr.open_rasterio(submonth_path, band_as_variable=True)
                 submonth_data = submonth_data.where(submonth_data != 65535, np.nan)
+                submonth_data = submonth_data.where(submonth_data < 7000, np.nan)
+                submonth_data = submonth_data * conversion_factor
                 if 'band_2' in submonth_data.data_vars:
                     submonth_data = submonth_data.drop_vars('band_2')
                 
