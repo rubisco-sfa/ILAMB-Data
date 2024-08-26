@@ -65,7 +65,7 @@ def create_xarray(local_data, local_u_data, uncertainty):
     data = data.assign(uncertainty=errd['band_1'])
     return data
 
-# function to resample to 0.5 degrees
+# 3. function to resample to 0.5 degrees
 def coarsen(target_res, data):
     resampled_data = data.coarsen(x=(int(target_res / abs(data.rio.resolution()[0]))),
                                   y=(int(target_res / abs(data.rio.resolution()[1])))).mean()
