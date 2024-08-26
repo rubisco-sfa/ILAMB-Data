@@ -1,18 +1,11 @@
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import xarray as xr
 import rioxarray as rxr
 import cftime as cf
-import cfunits
 from urllib.request import urlretrieve
 import datetime
 import os
 import time
-import zipfile
-import glob
-from collections import defaultdict
-import warnings
 
 #####################################################
 # set the parameters for this particular dataset
