@@ -1,36 +1,36 @@
 """
 Convert the Beck Koppen region tif files into a netCDF file for use as regions in ILAMB.
 """
+
 import re
 
-import intake
+import numpy as np
 import xarray as xr
 
-src = intake.open_rasterio(
-    "zip+https://figshare.com/ndownloader/files/12407516/Beck_KG_V1.zip!Beck_KG_V1_present_0p5.tif"
-)
-da = src.read()
-da = da.sel({"band": 1})
-da = da.rename({"x": "lon", "y": "lat"}).drop(["band"])
-da = da.astype(int) - 1
-da = xr.where(da["lat"] > -58, da, -1)  # remove Antarctica
 
-# At this time I am unable to figure out how to pull a single text file out of a
-# remote zip file using intake and so we depend here on you having extracted the
-# zip file referenced above locally in this directory.
-labels = []
-names = []
-lines = open("legend.txt", encoding="ISO 8859-1").readlines()
-for line in lines:
-    m = re.match("\s*(\d+):\s+(\w*)\s+(.*)\s\[.*", line)
-    if m:
-        labels.append(m.group(2))
-        names.append(m.group(3).strip())
-da.attrs.update(_FillValue=-1, labels="labels", names="names")
-ds = xr.Dataset({"ids": da, "labels": labels, "names": names})
+def parse_legend(filename: str = "legend.txt") -> tuple[list[str], list[str]]:
+    labels = []
+    names = []
+    lines = open(filename, encoding="ISO 8859-1").readlines()
+    for line in lines:
+        m = re.match(r"\s*(\d+):\s+(\w*)\s+(.*)\s\[.*", line)
+        if m:
+            labels.append(m.group(2))
+            names.append(m.group(3).strip())
+    return labels, names
+
+
+ds = (
+    xr.open_dataset("Beck_KG_V1_present_0p5.tif")
+    .sel({"band": 1})
+    .rename({"x": "lon", "y": "lat", "band_data": "ids"})
+    .drop_vars(["band", "spatial_ref"])
+)
+ds["ids"] = ds["ids"].astype(int) - 1
+ds["labels"], ds["names"] = parse_legend()
+ds["ids"].attrs.update(_FillValue=-1, labels="labels", names="names")
 
 ds.attrs = {
-    "comment": "Antarctica has been removed from the original as the purpose of this map is to provide regions for benchmarking biogeochemical cycles",
     "source": "https://doi.org/10.6084/m9.figshare.6396959",
     "reference": """
 @article{Beck2018,
@@ -42,4 +42,31 @@ ds.attrs = {
 }
 """,
 }
-ds.to_netcdf("Koppen.nc")
+ds.to_netcdf("Koppen_detailed.nc")
+
+# Also generate a coarsened region dataset where we only use top level groups
+dsc = xr.Dataset(
+    {
+        "ids": xr.where(
+            ds["ids"] >= 0,
+            np.array(
+                [
+                    {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4}[str(lbl.values)[0]]
+                    for lbl in ds["labels"]
+                ]
+            )[ds["ids"]],
+            -1,
+        ),
+        "labels": ["tropical", "arid", "temperate", "cold", "polar"],
+        "names": [
+            "Tropical climates",
+            "Desert and semi-arid climates",
+            "Temperate climates",
+            "Continental climates",
+            "Polar and alpine climates",
+        ],
+    }
+)
+dsc["ids"].attrs.update(_FillValue=-1, labels="labels", names="names")
+dsc.attrs = ds.attrs
+dsc.to_netcdf("Koppen.nc")
