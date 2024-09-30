@@ -6,6 +6,13 @@ import cftime
 import numpy as np
 import xarray as xr
 
+import gdown
+
+if not os.path.isfile("olc_ors.nc"):
+    gdown.download(id="1-v8QmowHzZrvUHWUdmSJw5rtwfxYJnfA",output="olc_ors.nc")
+if not os.path.isfile("ec_ors.nc"):
+    gdown.download(id="1fJnQ8P9WT6M1bSypbcZe2Cxqo_XwZsku",output="ec_ors.nc")
+
 # setup some simple argument parsing to avoid a loop and indentation
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -48,12 +55,17 @@ ds["time_bnds"] = (("time", "bnds"), tbnd)
 # depth is missing a bounds attribute
 ds["depth"].attrs["bounds"] = "depth_bnds"
 
-# rename sm and remove the standard deviation for now
-ds = ds.rename({"sm": "mrsol"}).drop("std")
+# rename sm and *Do not* remove the standard deviation for now
+ds = ds.rename({"sm": "mrsol","std": "mrsol_std"})
 
 # convert % to kg m-2
 ds["mrsol"] = ds["mrsol"] * ds["depth_bnds"].diff(dim="bnds").squeeze() * 998.0
-ds["mrsol"].attrs = {"standard_name": "soil_moisture_content", "units": "kg m-2"}
+ds["mrsol"].attrs = {"standard_name": "soil_moisture_content", "units": "kg m-2", "standard_error": "mrsol_std"}
+ds["mrsol_std"] = ds["mrsol_std"] * ds["depth_bnds"].diff(dim="bnds").squeeze() * 998.0
+
+#
+ds["lat"].attrs["units"] = "degrees_north"
+ds["lon"].attrs["units"] = "degrees_east"
 
 # add all the global attributes
 ds.attrs = {
@@ -90,5 +102,6 @@ ds.to_netcdf(
         "time": {"units": "days since 1850-01-01", "bounds": "time_bnds"},
         "time_bnds": {"units": "days since 1850-01-01"},
         "mrsol": {"zlib": True},  # <-- turns on compression for this variable
+        "mrsol_std": {"zlib": True},
     },
 )
