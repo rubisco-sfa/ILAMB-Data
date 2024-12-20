@@ -11,6 +11,7 @@ import zipfile
 import glob
 from collections import defaultdict
 import warnings
+import progressbar
 
 #####################################################
 # set the parameters for this particular dataset
@@ -21,7 +22,7 @@ edate = datetime.datetime(2020, 12, 31, 0, 0, 0)
 github_path = 'https://github.com/rubisco-sfa/ILAMB-Data/blob/master/GIMMS_LAIg4/convert.py'
 var = 'lai'
 long_name = 'leaf_area_index'
-output_path = 'cao2023.nc'
+output_path = 'cao2023_lai.nc'
 conversion_factor = .001
 
 # filter specific warning
@@ -31,25 +32,53 @@ warnings.filterwarnings("ignore", category=Warning, message=".*TIFFReadDirectory
 # functions in the order that they are used in main()
 #####################################################
 
+# first, create a progress bar to use
+class MyProgressBar():
+    def __init__(self):
+        self.pbar = None
+
+    def __call__(self, block_num, block_size, total_size):
+        if not self.pbar:
+            self.pbar=progressbar.ProgressBar(maxval=total_size)
+            self.pbar.start()
+
+        downloaded = block_num * block_size
+        if downloaded < total_size:
+            self.pbar.update(downloaded)
+        else:
+            self.pbar.finish()
+
 # 1. download the data and unzip
 def download_zip(local_data, remote_data):
+
+    zipdir = os.path.splitext(os.path.basename(local_data))[0]
+
     # download data and get timestamp
     if not os.path.isfile(local_data):
-        print(f'Downloading {local_data} ...')
-        urlretrieve(remote_data, local_data)
-    download_stamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(local_data)))
 
-    # check if zip file
-    if local_data.endswith('.zip'):
-        zipdir = os.path.splitext(os.path.basename(local_data))[0]
-        with zipfile.ZipFile(local_data, 'r') as zip_ref:
-            print(f'Unzipping {local_data} ...')
-            zip_ref.extractall()  # Extracts to the current directory
-        return zipdir, download_stamp
+        print(f'Downloading {local_data} ...')
+        urlretrieve(remote_data, local_data, MyProgressBar())
+        download_stamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(local_data)))
+
+        # check if it's a zip file and if its been unzipped
+        if local_data.endswith('.zip') and not os.path.isfile(zipdir):
+            try:
+                with zipfile.ZipFile(local_data, 'r') as zip_ref:
+                    print(f'Unzipping {local_data} ...')
+                    zip_ref.extractall()  # Extracts to the current directory
+            except Exception as e:
+                print('There is an issue with the zip file. Try deleting and re-downloading.', e)
+                raise
+            return zipdir, download_stamp
+            
+        else:
+            print('File does not end with .zip')
+            return None, download_stamp
         
     else:
-        print('File does not end with .zip')
-        return None, download_stamp
+        download_stamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(local_data)))
+        return zipdir, download_stamp
+
 
 # 2. group half-month tifs by year and month
 def group_tifs_by_month(zipdir):

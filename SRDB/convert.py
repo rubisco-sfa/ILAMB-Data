@@ -189,7 +189,7 @@ doi     = {10.1029/2019GB006264}}""",
     ds = ds.reindex(lat=list(reversed(ds.lat)))
 
     # export
-    ds.to_netcdf('warner2019.nc', format='NETCDF4', engine='netcdf4')
+    ds.to_netcdf('warner2019_Rs.nc', format='NETCDF4', engine='netcdf4')
 
 # use the above functions to convert the data into a 0.5deg netcdf
 def main():

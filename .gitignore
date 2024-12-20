@@ -1,10 +1,12 @@
 .gitignore
 *.tif
 *.nc
+*.zip
 *.ipynb
 *.sha256
 *.sqlite
 *.ipynb_checkpoints
+*.DS_Store*
 /GIMMS_LAI4g/GIMMS_LAI4g*
 ILAMB_sample/
 HWSD2_RASTER/

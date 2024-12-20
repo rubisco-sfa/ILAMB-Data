@@ -6,6 +6,7 @@ from urllib.request import urlretrieve
 import datetime
 import os
 import time
+import progressbar
 
 #####################################################
 # set the parameters for this particular dataset
@@ -32,10 +33,26 @@ local_u_data = '30cm_SOC_CV.tif'
 # functions for processing the data (in order)
 #####################################################
 
+# first, create a progress bar to use
+class MyProgressBar():
+    def __init__(self):
+        self.pbar = None
+
+    def __call__(self, block_num, block_size, total_size):
+        if not self.pbar:
+            self.pbar=progressbar.ProgressBar(maxval=total_size)
+            self.pbar.start()
+
+        downloaded = block_num * block_size
+        if downloaded < total_size:
+            self.pbar.update(downloaded)
+        else:
+            self.pbar.finish()
+
 # 1. download the data if not present in current dir
 def download_raster(local_data, remote_data):
     if not os.path.isfile(local_data):
-        urlretrieve(remote_data, local_data)
+        urlretrieve(remote_data, local_data, MyProgressBar())
     download_stamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(local_data)))
 
     return download_stamp
@@ -138,7 +155,7 @@ doi     = {10.1029/2023JG007702}}""",
     ds = ds.reindex(lat=list(reversed(ds.lat)))
 
     # export
-    ds.to_netcdf('wang2024.nc', format='NETCDF4', engine='netcdf4')
+    ds.to_netcdf('wang2024_cSoil.nc', format='NETCDF4', engine='netcdf4')
 
 def main():
 

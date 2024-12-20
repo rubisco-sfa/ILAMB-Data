@@ -1,4 +1,5 @@
 import os
+import subprocess
 import time
 import datetime
 import xarray as xr
@@ -8,7 +9,6 @@ import cftime as cf
 from osgeo import gdal
 import pandas as pd
 import sqlite3
-import matplotlib.pyplot as plt
 import warnings
 from dask.distributed import Client, LocalCluster
 
@@ -24,6 +24,9 @@ layers = ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7']
 pools = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 sdate = datetime.datetime(1960, 1, 1)
 edate = datetime.datetime(2022, 1, 1)
+
+# dask parameters -- adjust these to fit your computer's capabilities
+# chatgpt can optimize n_workers, n_threads, and mem_limit if you provide your computer specs!
 n_workers = 20
 n_threads = 1
 mem_limit = '3.5GB'
@@ -37,12 +40,28 @@ github_path = 'https://github.com/rubisco-sfa/ILAMB-Data/blob/master/HWSD2/conve
 
 # suppress specific warnings
 warnings.filterwarnings('ignore', message='invalid value encountered in cast')
+gdal.DontUseExceptions()
 
 #####################################################
 # functions in the order that they are used in main()
 #####################################################
 
-# 1. initialize the dask multiprocessing client; the link can be used to track worker progress
+# 1. download raster and sql database to connect to raster
+def download_data(remote_rast, remote_data):
+    # check for raster directory
+    rast_dir = os.path.splitext(os.path.basename(remote_rast))[0]
+    if not os.path.isdir(rast_dir) or not any(fname.endswith('.bil') for fname in os.listdir(rast_dir)):
+        subprocess.run(['mkdir', rast_dir])
+        subprocess.run(['curl', '-L', remote_rast, '-o', os.path.basename(remote_rast)])
+        subprocess.run(['unzip', os.path.basename(remote_rast), '-d', rast_dir])
+    # check for database
+    sql_database = os.path.basename(remote_data)
+    if not os.path.isfile(sql_database):
+        subprocess.run(['curl', '-L', remote_data, '-o', sql_database])
+    else:
+        print(f'Raster {rast_dir} and Database {sql_database} are already downloaded to current directory.')
+
+# 2. initialize the dask multiprocessing client; the link can be used to track worker progress
 def initialize_client(n_workers, n_threads, mem_limit):
     cluster = LocalCluster(n_workers=n_workers, 
                            threads_per_worker=n_threads, 
@@ -51,7 +70,7 @@ def initialize_client(n_workers, n_threads, mem_limit):
     print(f'Dask dashboard link: {client.dashboard_link}')
     return client
 
-# 2. load the raster we use to connect with HWSDv2 data
+# 3. load the raster we use to connect with HWSDv2 data
 def load_raster(path, chunksize):
     rast = rxr.open_rasterio(path, band_as_variable=True, 
                              mask_and_scale=True,
@@ -59,7 +78,7 @@ def load_raster(path, chunksize):
     rast = rast.astype('int16').drop_vars('spatial_ref').rename_vars(band_1='HWSD2_SMU_ID')
     return rast
 
-# 3. load the table with data from the sqlite database
+# 4. load the table with data from the sqlite database
 def load_layer_table(db_path, table_name):
     conn = sqlite3.connect(db_path)
     query = f'SELECT * FROM {table_name}'
@@ -67,7 +86,7 @@ def load_layer_table(db_path, table_name):
     conn.close()
     return layer_df
 
-# 4(a). function to calculate carbon stock
+# 5(a). function to calculate carbon stock
 def calculate_stock(df, depth, bulk_density_g_cm3, cf, organic_carbon):
     df['stock'] = (
         df[bulk_density_g_cm3] * 
@@ -77,11 +96,11 @@ def calculate_stock(df, depth, bulk_density_g_cm3, cf, organic_carbon):
     )
     return df['stock']
 
-# 4(b). function to calculate weighted mean
+# 5(b). function to calculate weighted mean
 def weighted_mean(values, weights):
     return (values * weights).sum() / weights.sum()
 
-# 4. process each soil layer by selecting the layer & pools of interest,
+# 5. process each soil layer by selecting the layer & pools of interest,
 # removing erroneous negative values, calculating C stock, and getting
 # the weighted mean of the pools
 def process_layers(layer_df, layers, pools, var):
@@ -97,12 +116,12 @@ def process_layers(layer_df, layers, pools, var):
         grouped = df.groupby('HWSD2_SMU_ID').apply(
             lambda x: pd.Series({
                 var: weighted_mean(x['ORG_CARBON'], x['SHARE'])
-            })
+            }), include_groups=False
         ).reset_index()
         dfs.append(grouped)
     return dfs
 
-# 5. combine all the layers by summing, and set the data types
+# 6. combine all the layers by summing, and set the data types
 def combine_and_summarize(dfs, var):
     total_df = pd.concat(dfs)
     total_df = total_df.groupby('HWSD2_SMU_ID')[var].agg('sum').reset_index(drop=False)
@@ -110,11 +129,11 @@ def combine_and_summarize(dfs, var):
     total_df[var] = total_df[var].astype('float32')
     return total_df
 
-# 6(a). function to map the soil unit ID to the cSoil variable
+# 7(a). function to map the soil unit ID to the cSoil variable
 def map_uid_to_var(uid, uid_to_var):
     return uid_to_var.get(uid, float('nan'))
 
-# 6. create a variable in the rast dataset containing cSoil data
+# 7. create a variable in the rast dataset containing cSoil data
 def apply_mapping(rast, total_df, var):
     uid_to_var = total_df.set_index('HWSD2_SMU_ID')[var].to_dict()
     mapped_orgc = xr.apply_ufunc(
@@ -129,13 +148,13 @@ def apply_mapping(rast, total_df, var):
     rast = rast.assign({var: mapped_orgc})
     return rast
 
-# 7. save the rast dataset as a tif
+# 8. save the rast dataset as a tif
 def save_raster(rast, var, layers, pools):
     output_path = f'hwsd2_{var}_{layers[0]}-{layers[-1]}_seq{pools[0]}-{pools[-1]}.tif'
     rast[[var]].rio.to_raster(output_path)
     return output_path
 
-# 8. resample the 250m resolution to 0.5deg resolution
+# 9. resample the 250m resolution to 0.5deg resolution
 def resample_raster(input_path, output_path, xres, yres, interp, nan):
     gdal.SetConfigOption('GDAL_CACHEMAX', '500')
     ds = gdal.Warp(output_path, input_path, 
@@ -146,7 +165,7 @@ def resample_raster(input_path, output_path, xres, yres, interp, nan):
                    outputBounds=(-180.0, -90.0, 180.0, 90.0))
     del ds
 
-# 9. create a netcdf of the 0.5deg resolution raster
+# 10. create a netcdf of the 0.5deg resolution raster
 def create_netcdf(input_path, output_path, var, sdate, edate, long_name):
 
     # open the .tif file
@@ -220,6 +239,8 @@ number       = {version 2.0}}""",
 
 # use all nine steps above to convert the data into a netcdf
 def main():
+
+    download_data(remote_rast, remote_data)
     
     client = initialize_client(n_workers, n_threads, mem_limit)
     
@@ -240,7 +261,7 @@ def main():
                     0.5, 0.5, 'average', 0)
     
     create_netcdf(f'hwsd2_{var}_{layers[0]}-{layers[-1]}_seq{pools[0]}-{pools[-1]}_resamp.tif', 
-                  f'hwsd2_{var}.tif', var, sdate, edate, long_name)
+                  f'hwsd2_{var}.nc', var, sdate, edate, long_name)
     
     client.close()
 
