@@ -1,0 +1,17 @@
+[project]
+name = "ilamb-data"
+version = "0.1.0"
+description = "Scripts that the ILAMB project uses to format reference data in the CF-conventions/"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "cftime>=1.6.4.post1",
+    "dask>=2024.12.1",
+    "ilamb3",
+    "ilamb>=2.7.2",
+    "netcdf4>=1.7.2",
+    "xarray>=2024.11.0",
+]
+
+[tool.uv.sources]
+ilamb3 = { git = "https://github.com/rubisco-sfa/ilamb3" }
