@@ -121,16 +121,45 @@ def open_data(data_path, res, interp, proj, nodata):
 
     # Always reproject with resolution adjustment
     data = data.rio.reproject(
-        dst_crs=proj,                      # Target CRS
-        shape=(int(180/res), int(360/res)),          # Target resolution
-        resampling=resampling              # Resampling method (mapped enum)
+        dst_crs=proj,
+        shape=(int(180/res), int(360/res)),
+        resampling=resampling
     )
 
-    # Set no-data value
+    # Get current bounds
+    target_bounds = (-180, -90, 180, 90)
+    current_bounds = data.rio.bounds()
+
+    # Conditional clipping or padding
+    if (current_bounds[0] < target_bounds[0] or  # Left bound smaller
+        current_bounds[1] < target_bounds[1] or  # Bottom bound smaller
+        current_bounds[2] > target_bounds[2] or  # Right bound larger
+        current_bounds[3] > target_bounds[3]):   # Top bound larger
+        # Clip to match the target bounds
+        print("Clipping data to target bounds...")
+        data = data.rio.clip_box(*target_bounds)
+    elif (current_bounds[0] > target_bounds[0] or  # Left bound larger
+          current_bounds[1] > target_bounds[1] or  # Bottom bound larger
+          current_bounds[2] < target_bounds[2] or  # Right bound smaller
+          current_bounds[3] < target_bounds[3]):   # Top bound smaller
+        # Pad to match the target bounds
+        print("Padding data to target bounds...")
+        data = data.rio.pad_box(*target_bounds)
+
+    # Adjust the affine transform to match the exact bounds
+    transform = data.rio.transform()
+    new_transform = transform * transform.translation(
+        xoff=(target_bounds[0] - transform.c) / transform.a,
+        yoff=(target_bounds[1] - transform.f) / -transform.e
+    )
+    data = data.rio.write_transform(new_transform)
+
+    # Set nodata value to NaN
     data = data.where(data != nodata, np.nan)
 
     # Debugging: Print the resulting dimensions and resolution
     print(f"Output CRS: {data.rio.crs}")
+    print("Output bounds:", data.rio.bounds())
     print(f"Output resolution: {data.rio.resolution()}")
     print(f"Output dimensions: {data.sizes}")
 
