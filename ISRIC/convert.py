@@ -18,10 +18,10 @@ from rasterio.enums import Resampling
 
 # variable info
 var = 'cSoil'
-long_name = 'carbon mass in soil pool'
+anc_var = 'coefficient_of_variation'
+var_long_name = 'carbon mass in soil pool'
 source_units = 't ha-1'
 target_units = 'kg m-2'
-anc_var = 'coefficient_of_variation'
 sdate = datetime.datetime(1905, 3, 31, 0, 0, 0) # Found here: https://data.isric.org/geonetwork/srv/api/records/713396f4-1687-11ea-a7c0-a0481ca9e724
 edate = datetime.datetime(2016, 7, 4, 0, 0, 0)
 
@@ -31,11 +31,11 @@ local_data = 'ocs_0-30cm_mean'
 local_u_data = 'ocs_0-30cm_uncertainty'
 github_path = 'https://github.com/rubisco-sfa/ILAMB-Data/blob/master/ISRIC/convert.py'
 output_path = 'soilgrids2_cSoil.nc'
-cellsize = 1000 # download res (m) in homolosine proj; I chose a higher res (but less than 0.5 in EPSG:4326) for processing speed
+cellsize = 1000 # download res (m) in homolosine epsg; I chose a higher res (but less than 0.5 in EPSG:4326) for processing speed
 nodata = -32768
 
 # regridding info
-proj = 'EPSG:4326'
+target_epsg = '4326'
 res = 0.5
 interp = 'average'
 
@@ -46,124 +46,85 @@ interp = 'average'
 gdal.UseExceptions()
 
 # 1. download data
-def download_data(local_data, remote_data, cellsize):
+def download_data(local_file, remote_file, cellsize, target_epsg):
     
-    local_data_wext = f'{local_data}.tif'
-    if not os.path.isfile(local_data_wext):
+    local_file_wext = f'{local_file}.tif'
+    if not os.path.isfile(local_file_wext):
 
         # download data using GDAL in bash
         print('Creating VRT ...')
-        create_vrt = f"""
-        gdal_translate --config GDAL_HTTP_UNSAFESSL YES \
-            -of VRT -tr {cellsize} {cellsize} \
-            {remote_data}/ocs/{local_data}.vrt \
-            {local_data}.vrt
-        """
+        create_vrt = (
+            f'gdal_translate --config GDAL_HTTP_UNSAFESSL YES '
+            f'-of VRT '
+            f'-tr {cellsize} {cellsize} '
+            f'{remote_file}/ocs/{local_file}.vrt '
+            f'{local_file}.vrt'
+            )
+        print(create_vrt)
         process = subprocess.Popen(create_vrt.split(), stdout=None)
         process.wait()
 
-        # reproject from Homolosine to EPSG 4326
+        # reproject from Homolosine to target_epsg 4326
         print('Reprojecting VRT ...')
-        reproject = f"""
-        gdalwarp --config GDAL_HTTP_UNSAFESSL YES \
-            -overwrite -t_srs EPSG:4326 -of VRT \
-            {local_data}.vrt \
-            {local_data}_4326.vrt
-        """
+        reproject = (
+            f'gdalwarp --config GDAL_HTTP_UNSAFESSL YES '
+            f'-overwrite '
+            f'-t_srs EPSG:{target_epsg} '
+            f'-of VRT '
+            f'-te -180 -90 180 90 '
+            f'{local_file}.vrt '
+            f'{local_file}_{target_epsg}.vrt'
+            )
+        print(reproject)
         process = subprocess.Popen(reproject.split(), stdout=None)
         process.wait()
 
         # create tiff
         print('Creating TIFF ...')
-        create_tif = f"""
-        gdal_translate --config GDAL_HTTP_UNSAFESSL YES \
-            -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BIGTIFF=YES \
-            {local_data}_4326.vrt \
-            {local_data}.tif
-        """
+        create_tif = (
+            f'gdal_translate --config GDAL_HTTP_UNSAFESSL YES '
+            f'-co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BIGTIFF=YES '
+            f'{local_file}_{target_epsg}.vrt '
+            f'{local_file}.tif'
+            )
+        print(create_tif)
         process = subprocess.Popen(create_tif.split(), stdout=None)
         process.wait()
     
-    download_stamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(local_data_wext)))
+    download_stamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(local_file_wext)))
     return download_stamp
 
-# 3. open data
-def open_data(data_path, res, interp, proj, nodata):
-    print('Opening and resampling raster ...')
+# 2. create xarray dataset
+def create_xarray(local_data, local_u_data, anc_var, target_epsg, nodata):
 
-    # Map string interp to Resampling enum
-    resampling_methods = {
-        "nearest": Resampling.nearest,
-        "bilinear": Resampling.bilinear,
-        "cubic": Resampling.cubic,
-        "cubic_spline": Resampling.cubic_spline,
-        "lanczos": Resampling.lanczos,
-        "average": Resampling.average,
-        "mode": Resampling.mode,
-        "max": Resampling.max,
-        "min": Resampling.min,
-        "med": Resampling.med,
-        "q1": Resampling.q1,
-        "q3": Resampling.q3,
-        "sum": Resampling.sum,
-        "rms": Resampling.rms,
-    }
+    def open_raster(local_data, target_epsg):
 
-    # Validate interp
-    if interp not in resampling_methods:
-        raise ValueError(
-            f"Invalid resampling method '{interp}'. Choose from: {list(resampling_methods.keys())}"
-        )
-    resampling = resampling_methods[interp]
+        # read a .tif file into an xarray
+        data = rxr.open_rasterio(local_data, band_as_variable=True)
+        epsg_code = int(data.rio.crs.to_epsg())
+        print(epsg_code)
+        if epsg_code != target_epsg:
+            data = data.rio.reproject(dst_crs=f'EPSG:{target_epsg}')
+        return data
+    
+    # open data and error files
+    data = open_raster(local_data, target_epsg)
+    errd = open_raster(local_u_data, target_epsg)
+    errd_aligned = errd.rio.reproject_match(data)
+    data[anc_var] = errd_aligned['band_1']
 
-    # Open the raster
-    data = rxr.open_rasterio(data_path, band_as_variable=True)
-
-    # Always reproject with resolution adjustment
-    data = data.rio.reproject(
-        dst_crs=proj,
-        shape=(int(180/res), int(360/res)),
-        resampling=resampling
-    )
-
-    # Get current bounds
-    target_bounds = (-180, -90, 180, 90)
-    current_bounds = data.rio.bounds()
-
-    # Conditional clipping or padding
-    if (current_bounds[0] < target_bounds[0] or  # Left bound smaller
-        current_bounds[1] < target_bounds[1] or  # Bottom bound smaller
-        current_bounds[2] > target_bounds[2] or  # Right bound larger
-        current_bounds[3] > target_bounds[3]):   # Top bound larger
-        # Clip to match the target bounds
-        print("Clipping data to target bounds...")
-        data = data.rio.clip_box(*target_bounds)
-    elif (current_bounds[0] > target_bounds[0] or  # Left bound larger
-          current_bounds[1] > target_bounds[1] or  # Bottom bound larger
-          current_bounds[2] < target_bounds[2] or  # Right bound smaller
-          current_bounds[3] < target_bounds[3]):   # Top bound smaller
-        # Pad to match the target bounds
-        print("Padding data to target bounds...")
-        data = data.rio.pad_box(*target_bounds)
-
-    # Adjust the affine transform to match the exact bounds
-    transform = data.rio.transform()
-    new_transform = transform * transform.translation(
-        xoff=(target_bounds[0] - transform.c) / transform.a,
-        yoff=(target_bounds[1] - transform.f) / -transform.e
-    )
-    data = data.rio.write_transform(new_transform)
-
-    # Set nodata value to NaN
+    # set nodata
     data = data.where(data != nodata, np.nan)
 
-    # Debugging: Print the resulting dimensions and resolution
-    print(f"Output CRS: {data.rio.crs}")
-    print("Output bounds:", data.rio.bounds())
-    print(f"Output resolution: {data.rio.resolution()}")
-    print(f"Output dimensions: {data.sizes}")
-
     return data
+
+# 3. resample to 0.5 degrees
+def coarsen(data, target_res):
+    
+    resampled_data = data.coarsen(x=(int(target_res / abs(data.rio.resolution()[0]))),
+                                  y=(int(target_res / abs(data.rio.resolution()[1]))),
+                                  boundary='trim').mean()
+    return resampled_data
 
 # 4(a). sub-function to convert units
 def convert_units(data_array, target_units):
@@ -189,57 +150,32 @@ def convert_units(data_array, target_units):
     return new_data_array
 
 # 4. create and format netcdf
-def create_netcdf(data, errd, output_path, var, long_name, source_units, target_units, anc_var, sdate, edate, download_stamp):
+def create_netcdf(data, var, var_long_name, anc_var,
+                  source_units, target_units,
+                  sdate, edate, download_stamp,
+                  output_path):
     print('Creating netcdf ...')
 
-    # rename dims
+    # rename bands and mask invalid data
     ds = data.rename({'x': 'lon', 'y': 'lat', 'band_1':var})
-    er = errd.rename({'x': 'lon', 'y': 'lat', 'band_1':anc_var})
 
-    # numpy array of time bounds
+    # create time dimension
     tb_arr = np.asarray([
         [cf.DatetimeNoLeap(sdate.year, sdate.month, sdate.day)],
         [cf.DatetimeNoLeap(edate.year, edate.month, edate.day)]
     ]).T
-
-    # np array to xr data array (time bounds)
     tb_da = xr.DataArray(tb_arr, dims=('time', 'nv'))
-
-    # add time dimension and time bounds attribute
     ds = ds.expand_dims(time=tb_da.mean(dim='nv'))
     ds['time_bounds'] = tb_da
-    er = er.expand_dims(time=tb_da.mean(dim='nv'))
-    er['time_bounds'] = tb_da
 
-    # add standard error variable
-    ds[anc_var] = er[anc_var]
+    # dictionaries for formatting each dimension and variable
+    t_attrs = {'axis': 'T', 'long_name': 'time'}
+    y_attrs = {'axis': 'Y', 'long_name': 'latitude', 'units': 'degrees_north'}
+    x_attrs = {'axis': 'X', 'long_name': 'longitude', 'units': 'degrees_east'}
+    v_attrs = {'long_name': var_long_name, 'units': source_units, 'ancillary_variables': anc_var}
+    e_attrs = {'long_name': f'{var} {anc_var}', 'units': 1}
 
-    # https://cfconventions.org/Data/cf-documents/requirements-recommendations/conformance-1.8.html
-    # edit time attributes
-    t_attrs = {
-        'axis':'T',
-        'long_name':'time'}
-
-    # edit lat/lon attributes
-    y_attrs = {
-        'axis':'Y',
-        'long_name':'latitude',
-        'units':'degrees_north'}
-    x_attrs = {
-        'axis':'X',
-        'long_name':'longitude',
-        'units':'degrees_east'}
-
-    # edit variable attributes
-    v_attrs = {
-        'long_name': long_name,
-        'units': source_units,
-        'ancillary_variables': anc_var}
-    e_attrs = {
-        'long_name': f'{var} {anc_var}',
-        'units': 1}
-
-    # set attributes
+    # apply formatting
     ds['time'].attrs = t_attrs
     ds['time_bounds'].attrs['long_name'] = 'time_bounds'
     ds['lat'].attrs = y_attrs
@@ -295,18 +231,19 @@ def create_netcdf(data, errd, output_path, var, long_name, source_units, target_
 # use all steps above to convert the data into a netcdf
 def main():
 
-    # open data & resample
-    download_stamp = download_data(local_data, remote_data, cellsize)
-    data = open_data(f'{local_data}.tif', res, interp, proj, nodata)
+    # download data
+    download_stamp = download_data(local_data, remote_data, cellsize, target_epsg)
+    _ = download_data(local_u_data, remote_data, cellsize, target_epsg)
 
-    # open error data & resample
-    _ = download_data(local_u_data, remote_data, cellsize)
-    errd = open_data(f'{local_u_data}_resampled.tif', res, interp, proj, nodata)
+    # create xarray and re-grid
+    data = create_xarray(f'{local_data}.tif', f'{local_u_data}.tif', anc_var, target_epsg, nodata)
+    data = coarsen(data, res)
 
     # export and format netcdf
-    create_netcdf(data, errd, output_path, var, long_name, 
-                  source_units, target_units, anc_var,
-                  sdate, edate, download_stamp)
+    create_netcdf(data, var, var_long_name, anc_var,
+                  source_units, target_units,
+                  sdate, edate, download_stamp,
+                  output_path)
 
 if __name__ == "__main__":
     main()
