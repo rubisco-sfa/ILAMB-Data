@@ -2,6 +2,7 @@
 *.tif
 *.nc
 *.zip
+*.vrt
 *.ipynb
 *.sha256
 *.sqlite
