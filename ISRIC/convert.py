@@ -103,7 +103,7 @@ def create_xarray(local_data, local_u_data, anc_var, target_epsg, nodata):
         data = rxr.open_rasterio(local_data, band_as_variable=True)
         epsg_code = int(data.rio.crs.to_epsg())
         print(epsg_code)
-        if epsg_code != target_epsg:
+        if epsg_code != int(target_epsg):
             data = data.rio.reproject(dst_crs=f'EPSG:{target_epsg}')
         return data
     
