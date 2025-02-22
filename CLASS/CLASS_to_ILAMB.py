@@ -60,7 +60,11 @@ for v in ["mrro", "pr", "hfls", "hfss", "rns"]:
             "time_bnds": xr.DataArray(tb, dims=("time", "nv")),
         }
     )
-    out[v].attrs["bounds"] = uncert
+    out[v].attrs["ancillary_variables"] = uncert
+    out[uncert].attrs = {
+        "standard_name": f"{v} standard_error",
+        "units": out[v].attrs["units"],
+    }
 
     attrs = {}
     attrs["title"] = "Conserving Land-Atmosphere Synthesis Suite (CLASS) v1.1"
@@ -98,11 +102,11 @@ for v in ["mrro", "pr", "hfls", "hfss", "rns"]:
 }
 """
     out.attrs = attrs
-    print(out)
     out.to_netcdf(
         "%s.nc" % v,
         encoding={
             v: {"zlib": True},
+            uncert: {"zlib": True},
             "time": {"units": "days since 2003-01-01", "bounds": "time_bnds"},
             "time_bnds": {"units": "days since 2003-01-01"},
         },
