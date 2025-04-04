@@ -12,3 +12,5 @@
 ILAMB_sample/
 HWSD2_RASTER/
 wise_30sec_v1/
+*_temp*
+*__pycache__*
