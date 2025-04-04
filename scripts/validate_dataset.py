@@ -74,6 +74,7 @@ class ILAMBDataset(BaseModel):
             raise ValueError(
                 f"Dataset has too many data variables {ds.data_vars}. The measurement and the uncertainty are the only expected data variables. There should be one netCDF file per data variable if a dataset has multiple data variables."
             )
+        return ds
 
     @field_validator("ds")
     @classmethod
@@ -82,11 +83,11 @@ class ILAMBDataset(BaseModel):
         missing = set(
             [
                 "title",
-                "source_version_number",
                 "institution",
                 "source",
                 "history",
                 "references",
+                "comment",
                 "Conventions",
             ]
         ) - set(ds.attrs.keys())
