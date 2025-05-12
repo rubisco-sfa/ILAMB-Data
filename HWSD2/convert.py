@@ -27,10 +27,10 @@ from scripts import helper_funcs as hf
 #####################################################
 
 # main parameters
-VAR = "cSoil"
-# VAR = "cSoilAbove1m"
-LAYERS = ["D1", "D2", "D3", "D4", "D5", "D6", "D7"]  # cSoil
-# LAYERS = ["D1", "D2", "D3", "D4", "D5"]  # cSoilAbove1m
+# VAR = "cSoil"
+VAR = "cSoilAbove1m"
+# LAYERS = ["D1", "D2", "D3", "D4", "D5", "D6", "D7"]  # cSoil
+LAYERS = ["D1", "D2", "D3", "D4", "D5"]  # cSoilAbove1m
 POOLS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]  # soil types
 SDATE = datetime.datetime(1960, 1, 1)
 EDATE = datetime.datetime(2022, 1, 1)
