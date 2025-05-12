@@ -130,7 +130,6 @@ ds = ds[VAR].to_dataset()
 ######################################################################
 
 # Set dimension attributes and encoding
-ds = hf.set_time_attrs(ds)
 ds = hf.set_lat_attrs(ds)
 ds = hf.set_lon_attrs(ds)
 
@@ -148,6 +147,7 @@ ds = hf.set_var_attrs(
 
 # Add time bounds
 ds = hf.add_time_bounds_monthly(ds)
+ds = hf.set_time_attrs(ds)
 time_range = f"{ds['time'].min().dt.year:d}{ds['time'].min().dt.month:02d}"
 time_range += f"-{ds['time'].max().dt.year:d}{ds['time'].max().dt.month:02d}"
 

@@ -266,6 +266,49 @@ def add_time_bounds_monthly(ds: xr.Dataset) -> xr.Dataset:
     return ds
 
 
+def add_time_bounds_single(
+    ds: xr.Dataset, start_date: str, end_date: str
+) -> xr.Dataset:
+    """
+    Add a single time coordinate with bounds to an xarray Dataset.
+
+    The 'time' coordinate is set to the midpoint between the start and end dates,
+    and a 'time_bounds' coordinate is added following CF conventions.
+
+    Args:
+        ds (xr.Dataset): Dataset to modify.
+        start_date (str): Start of the time bounds (e.g., '2020-01-01').
+        end_date (str): End of the time bounds (e.g., '2020-02-01').
+
+    Returns:
+        xr.Dataset: Dataset with a single 'time' coordinate and 'time_bounds'.
+    """
+    start = np.datetime64(start_date)
+    end = np.datetime64(end_date)
+
+    if end <= start:
+        raise ValueError("end_date must be after start_date.")
+
+    # Midpoint timestamp for 'time' coordinate
+    midpoint = start + (end - start) / 2
+    time = xr.DataArray([midpoint], dims="time", name="time")
+
+    # Time bounds as a 2D array with shape (1, 2)
+    time_bounds = xr.DataArray(
+        np.array([[start, end]], dtype="datetime64[ns]"),
+        dims=("time", "bounds"),
+        name="time_bounds",
+    )
+
+    # Expand the dataset with this new time dimension and assign bounds
+    ds = ds.expand_dims({"time": time})
+    ds = ds.assign_coords(time_bounds=time_bounds)
+    ds["time_bounds"].attrs["long_name"] = "time_bounds"
+    ds["time"].attrs["bounds"] = "time_bounds"
+
+    return ds
+
+
 def set_cf_global_attributes(
     ds: xr.Dataset,
     *,  # keyword only for the following args
