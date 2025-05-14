@@ -1,7 +1,7 @@
 import datetime
 import os
 
-import cftime as cf
+import cftime
 import numpy as np
 import requests
 import xarray as xr
@@ -135,28 +135,31 @@ def set_time_attrs(ds: xr.Dataset) -> xr.Dataset:
     """
     Ensure the xarray dataset's time attributes are formatted according to CF-Conventions.
     """
-    assert "time" in ds
     da = ds["time"]
 
-    # Ensure time is an accepted xarray time dtype
+    # build ref_date
     if np.issubdtype(da.dtype, np.datetime64):
         ref_date = np.datetime_as_string(da.min().values, unit="s")
-    elif isinstance(da.values[0], cf.datetime):
+    elif isinstance(da.values[0], cftime.datetime):
         ref_date = da.values[0].strftime("%Y-%m-%d %H:%M:%S")
     else:
-        raise TypeError(
-            f"Unsupported xarray time format: {type(da.values[0])}. Accepted types are np.datetime64 or cftime.datetime."
-        )
+        raise TypeError(f"Unsupported time dtype {type(da.values[0])}.")
 
-    da.encoding = {
-        "units": f"days since {ref_date}",
-        "calendar": da.encoding.get("calendar"),
-    }
-    da.attrs = {
-        "axis": "T",
-        "standard_name": "time",
-        "long_name": "time",
-    }
+    # set a valid calendar
+    da.encoding["calendar"] = "standard"
+
+    # set the units string
+    da.encoding["units"] = f"days since {ref_date}"
+
+    # update (not replace!) the attrs so we keep .attrs["bounds"]
+    da.attrs.update(
+        {
+            "axis": "T",
+            "standard_name": "time",
+            "long_name": "time",
+        }
+    )
+
     ds["time"] = da
     return ds
 
@@ -167,12 +170,14 @@ def set_lat_attrs(ds: xr.Dataset) -> xr.Dataset:
     """
     assert "lat" in ds
     da = ds["lat"]
-    da.attrs = {
-        "axis": "Y",
-        "units": "degrees_north",
-        "standard_name": "latitude",
-        "long_name": "latitude",
-    }
+    da.attrs.update(
+        {
+            "axis": "Y",
+            "units": "degrees_north",
+            "standard_name": "latitude",
+            "long_name": "latitude",
+        }
+    )
     ds["lat"] = da
     return ds
 
@@ -183,12 +188,14 @@ def set_lon_attrs(ds: xr.Dataset) -> xr.Dataset:
     """
     assert "lon" in ds
     da = ds["lon"]
-    da.attrs = {
-        "axis": "X",
-        "units": "degrees_east",
-        "standard_name": "longitude",
-        "long_name": "longitude",
-    }
+    da.attrs.update(
+        {
+            "axis": "X",
+            "units": "degrees_east",
+            "standard_name": "longitude",
+            "long_name": "longitude",
+        }
+    )
     ds["lon"] = da
     return ds
 
@@ -261,6 +268,50 @@ def add_time_bounds_monthly(ds: xr.Dataset) -> xr.Dataset:
     bounds_array = np.array([lower_bounds, upper_bounds]).T
     ds = ds.assign_coords(time_bounds=(("time", "bounds"), bounds_array))
     ds["time_bounds"].attrs["long_name"] = "time_bounds"
+    ds["time"].attrs["bounds"] = "time_bounds"
+
+    return ds
+
+
+def add_time_bounds_single(
+    ds: xr.Dataset, start_date: str, end_date: str
+) -> xr.Dataset:
+    """
+    Add a single time coordinate with bounds to an xarray Dataset.
+
+    The 'time' coordinate is set to the midpoint between the start and end dates,
+    and a 'time_bounds' coordinate is added following CF conventions.
+
+    Args:
+        ds (xr.Dataset): Dataset to modify.
+        start_date (str): Start of the time bounds (e.g., '2020-01-01').
+        end_date (str): End of the time bounds (e.g., '2020-02-01').
+
+    Returns:
+        xr.Dataset: Dataset with a single 'time' coordinate and 'time_bounds'.
+    """
+
+    start = np.datetime64(start_date)
+    end = np.datetime64(end_date)
+    if end <= start:
+        raise ValueError("end_date must be after start_date.")
+
+    midpoint = start + (end - start) / 2
+    time = xr.DataArray([midpoint], dims="time", name="time")
+    time_bounds = xr.DataArray(
+        np.array([[start, end]], dtype="datetime64[ns]"),
+        dims=("time", "bounds"),
+        name="time_bounds",
+    )
+
+    # expand_dims can take a DataArray as the new coord
+    ds = ds.expand_dims({"time": time})
+    ds = ds.assign_coords(time_bounds=time_bounds)
+
+    # set the CF-required attrs on the bounds var
+    ds["time_bounds"].attrs["long_name"] = "time_bounds"
+
+    # give the time coord a pointer to its bounds
     ds["time"].attrs["bounds"] = "time_bounds"
 
     return ds
