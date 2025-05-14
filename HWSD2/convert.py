@@ -27,10 +27,10 @@ from scripts import helper_funcs as hf
 #####################################################
 
 # main parameters
-# VAR = "cSoil"
-VAR = "cSoilAbove1m"
-# LAYERS = ["D1", "D2", "D3", "D4", "D5", "D6", "D7"]  # cSoil
-LAYERS = ["D1", "D2", "D3", "D4", "D5"]  # cSoilAbove1m
+VAR = "cSoil"
+# VAR = "cSoilAbove1m"
+LAYERS = ["D1", "D2", "D3", "D4", "D5", "D6", "D7"]  # cSoil
+# LAYERS = ["D1", "D2", "D3", "D4", "D5"]  # cSoilAbove1m
 POOLS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]  # soil types
 SDATE = datetime.datetime(1960, 1, 1)
 EDATE = datetime.datetime(2022, 1, 1)
@@ -303,11 +303,13 @@ def create_netcdf(
     )
 
     # export as netcdf
-    time_range = f"{ds['time'].min().dt.year:d}{ds['time'].min().dt.month:02d}"
-    time_range += f"-{ds['time'].max().dt.year:d}{ds['time'].max().dt.month:02d}"
     ds.to_netcdf(
-        "{variable}_{frequency}_{source_id}_{time_mark}.nc".format(
-            variable=var, frequency="fx", source_id="HWSD2", time_mark=time_range
+        "{variable}_{frequency}_{source_id}_{st_date}-{en_date}.nc".format(
+            variable=var,
+            frequency="fx",
+            source_id="HWSD2",
+            st_date=sdate.strftime("%Y%m%d"),
+            en_date=edate.strftime("%Y%m%d"),
         ),
         encoding={VAR: {"zlib": True}},
     )
