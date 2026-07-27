@@ -69,13 +69,13 @@ remain useful targets.
 
 ## Quality control: masked grid cells
 
-Twenty-one of 835 land cells are masked because their state is non-physical. This
-is a **fixed physical-bound filter, not a statistical outlier filter** — see
+Twenty-seven of 835 land cells are masked because their state is non-physical.
+This is a **fixed physical-bound filter, not a statistical outlier filter** — see
 "On the apparent tropical hotspots" below for why that distinction matters.
 
-Two independent masks are built and each is applied across its own domain, so the
-carbon budget still closes cell-by-cell (`reco = ra + rh`, `npp = gpp − ra`)
-without the water bounds needlessly discarding sound carbon cells:
+Three independent masks are built and each is applied across its own domain, so
+the carbon budget still closes cell-by-cell (`reco = ra + rh`, `npp = gpp − ra`)
+without the water or temperature bounds needlessly discarding sound carbon cells:
 
 | bound (source units) | test | domain | cells | rationale |
 |---|---|---|---|---|
@@ -85,10 +85,11 @@ without the water bounds needlessly discarding sound carbon cells:
 | `H2O_LY3` > 10 000 kg m⁻² | any month | water | 9 | a >10 m water column |
 | `H2O_SWE` > 3 000 kg m⁻² | time mean | water | 7 | >3 m mean SWE implies a glacier |
 | `runoff` > 30 kg m⁻² d⁻¹ | any month | water | 2 | both already caught above |
+| `D_TEMP_LY1` > 50 °C | any month | temp | 6 | exceeds the hottest skin temperature in the forcing |
 
 Net effect: **6 cells** removed from the carbon variables (835 → 829), **15** from
-the water variables (835 → 820), none from `lai` or `tsl`. `convert.py` prints the
-full cell list with reasons on every run.
+the water variables (835 → 820) and **6** from `tsl` (835 → 829); `lai` is
+unmasked. `convert.py` prints the full cell list with reasons on every run.
 
 Cells are masked for all time rather than only in the breaching months, because
 the defect is a property of the pixel: at 42°N/80°W `rh_co2` breaches in 32 of 252
@@ -185,12 +186,16 @@ Consequences:
 - **`tsl` carries no depth coordinate.** It is the temperature of the first energy
   state, whose depth is likewise unpublished. Depth-sensitive analyses — notably
   ILAMB's `ConfPermafrost`, which uses `dmax = 3.5` m — are **not supported**.
-- **`tsl` is not quality-controlled, and has two suspect cells.** It reaches
-  73.4 °C at (66°N, 155°E) and 58.7 °C at (70°N, 160°E), each in a single month,
-  in cells whose long-term means are −3.7 °C and −7.7 °C — almost certainly
-  numerical. No bound is applied because any ceiling low enough to catch them also
-  removes genuinely hot deserts: (18°N, 5°W) exceeds 50 °C in 86 months as a
-  coherent seasonal cycle. Flagged for the data producers rather than guessed at.
+- **`tsl` is bounded at 50 °C, which removes 6 cells.** The ceiling comes from
+  the model's own ERA5 forcing: across the whole grid the hottest monthly-mean
+  air temperature is 38.5 °C, the hottest `T2M_MAX` is 46.3 °C and the hottest
+  monthly **skin** temperature is 41.8 °C. A subsurface layer cannot exceed the
+  surface driving it as a monthly mean, so anything above 50 °C is unphysical
+  regardless of climate zone. Every masked cell breaks that by a wide margin —
+  the Sahara cell (18°N, 5°W) reaches 67.6 °C in a month when ERA5 skin
+  temperature there is 31.8 °C, and (66°N, 155°E) reaches 73.4 °C with a
+  long-term mean of −3.7 °C. Note this is a *monthly mean*: the familiar 70 °C
+  desert readings are instantaneous midday skin values and are not comparable.
 
 ## Formatting choices
 - CF-1.11, `noleap` calendar, `days since 1850-01-01` with `time_bnds`, plus

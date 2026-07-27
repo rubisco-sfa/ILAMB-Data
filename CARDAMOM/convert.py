@@ -48,10 +48,10 @@ columns in excess of 50 m at some high-latitude cells that are *not* glaciated.
 
 We therefore mask whole grid cells that breach a fixed, physically justified
 bound (``QC_BOUNDS`` below), in the manner of GIMMS_LAI4g (``< 7000``) and NCSCD
-(``< 1e-3``). Two independent masks are built -- carbon and water -- and
-each is applied only across its own domain, so that the carbon budget still
-closes cell-by-cell (reco = ra + rh, npp = gpp - ra) without the water bounds
-needlessly removing good carbon cells. Cells are masked for all time
+(``< 1e-3``). Three independent masks are built -- carbon, water and
+temperature -- and each is applied only across its own domain, so that the
+carbon budget still closes cell-by-cell (reco = ra + rh, npp = gpp - ra) without
+the water bounds needlessly removing good carbon cells. Cells are masked for all time
 rather than only in the breaching months, because the diagnosis is a property of
 the pixel: at 42N/80W rh_co2 breaches in 32 of 252 months but averages 6.8
 gC m-2 d-1 against a global median of 0.41, so the months that pass the bound are
@@ -125,12 +125,15 @@ QC_BOUNDS = [
     ("H2O_LY3",    1.0e4,   "any",   "water",   "soil layer 3 > 10 m water column"),
     ("H2O_SWE",    3.0e3,   "mean",  "water",   "mean SWE > 3 m implies a glacier, which DALEC-CWE lacks"),
     ("runoff",     30.0,    "any",   "water",   "runoff > 30 kg m-2 d-1"),
-    # No bound on D_TEMP_LY1. It reaches 73.4 C at 66N/155E and 58.7 C at
-    # 70N/160E -- single-month spikes in cells whose means are -3.7 and -7.7 C,
-    # so almost certainly numerical. But a flat ceiling low enough to catch them
-    # also removes hot deserts (18N/5W runs above 50 C in 86 months, a coherent
-    # seasonal cycle), which would be deleting real signal. Left unmasked and
-    # documented pending advice from the data producers.
+    # Soil temperature. The ceiling is set from the model's own ERA5 forcing:
+    # across the whole grid the hottest monthly-mean air temperature is 38.5 C,
+    # the hottest monthly T2M_MAX is 46.3 C and the hottest monthly *skin*
+    # temperature is 41.8 C. A subsurface layer cannot exceed the surface
+    # driving it as a monthly mean, so 50 C leaves ~8 C of headroom over the
+    # global skin maximum and is deliberately conservative. It catches 6 cells,
+    # every one of which exceeds the global skin maximum by 12-32 C -- including
+    # 67.6 C in the Sahara where ERA5 skin temperature that month is 31.8 C.
+    ("D_TEMP_LY1", 323.15,  "any",   "temp",    "soil T > 50 C exceeds the hottest skin temperature in the forcing (41.8 C)"),
 ]
 
 # Source quantities that may legitimately be negative (net exchanges). Everything
@@ -173,12 +176,11 @@ COMMENT = {
     "both reference and model, so the unpublished layer depths do not affect "
     "this comparison. Note that GRACE/GRACE-FO water storage anomalies were "
     "assimilated by CARDAMOM, so this is not an independent check against GRACE.",
-    "tsl": COMMENT_BASE + " NOTE: tsl is NOT quality-controlled. It reaches "
-    "73.4 C at 66N/155E and 58.7 C at 70N/160E, both single months in cells "
-    "whose long-term means are below freezing; treat high-latitude extremes "
-    "with caution. No bound is applied because any ceiling low enough to catch "
-    "them also removes genuinely hot deserts. Additionally, this is the "
-    "temperature of DALEC-CWE's first energy state, whose depth is not published. No depth coordinate is "
+    "tsl": COMMENT_BASE + " The soil-temperature ceiling is set from the model's "
+    "own ERA5 forcing, whose hottest monthly-mean skin temperature anywhere is "
+    "41.8 C; a subsurface layer cannot exceed its own surface forcing as a "
+    "monthly mean. Additionally, this is the temperature of DALEC-CWE's first "
+    "energy state, whose depth is not published. No depth coordinate is "
     "provided and depth-sensitive analyses (e.g. ILAMB's ConfPermafrost, which "
     "uses dmax=3.5 m) are not supported by this dataset.",
     "nee": COMMENT_BASE + " Additionally, nee is defined here as -NEP, taken "
@@ -262,7 +264,7 @@ VARDEFS = {
     # NOTE on tsl: D_TEMP_LY1 is the temperature of DALEC-CWE's first energy
     # state, whose depth is not published. No depth coordinate is written, and
     # depth-sensitive confrontations (ConfPermafrost, dmax=3.5) are unsupported.
-    "tsl": dict(terms=[("D_TEMP_LY1", 1.0)], factor=1.0, units="K", domain=None,
+    "tsl": dict(terms=[("D_TEMP_LY1", 1.0)], factor=1.0, units="K", domain="temp",
                 long_name="Temperature of Soil (layer 1)", standard_name="soil_temperature"),
 }
 
