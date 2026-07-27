@@ -33,34 +33,39 @@ guide, "Parameter Inference and Implementation"). At a small number of cells the
 initial pool sizes are poorly constrained, producing a decaying disequilibrium
 transient rather than a physically meaningful state. The clearest case is
 42N/80W, where the coarse woody debris pool is initialised at 48180 gC m-2 and
-decays to 690 gC m-2 by 2021 (a factor of 70, against 1.9 for the next-worst
-cell); the associated heterotrophic respiration reaches 60 gC m-2 d-1. Every one
-of the 34 months in the whole record with rh_co2 > 20 gC m-2 d-1 falls in
+decays to 690 gC m-2 by 2021 -- a factor of 70, against 2.04 for the next-worst
+cell; the associated heterotrophic respiration reaches 60 gC m-2 d-1. Every one
+of the 34 cell-months in the whole record with rh_co2 > 20 gC m-2 d-1 falls in
 2001-2003, which is the signature of an initial condition rather than of a
-process.
+process. Masking this one cell moves the global-land mean of cSoil by 2.0% and of
+NEP by 13.9%.
 
 Separately, DALEC-CWE has no glacier or permanent-ice representation, so snow
-and soil water accumulate without bound over ice caps (Svalbard, Ellesmere,
-Devon, Novaya Zemlya, Baffin, the St Elias/Wrangell/Chugach/Alaska ranges, and
-the Andes), giving multi-metre mean snow water equivalent and soil water columns
-in excess of 50 m.
+accumulates without bound over ice caps (Svalbard, Ellesmere, Devon, Novaya
+Zemlya, Baffin and the St Elias/Wrangell/Chugach/Alaska ranges), giving
+multi-metre mean snow water equivalent. A distinct failure mode gives soil-water
+columns in excess of 50 m at some high-latitude cells that are *not* glaciated.
 
 We therefore mask whole grid cells that breach a fixed, physically justified
 bound (``QC_BOUNDS`` below), in the manner of GIMMS_LAI4g (``< 7000``) and NCSCD
-(``< 1e-3``). Two independent masks are built -- one from the carbon bounds and
-one from the water bounds -- and each is applied across its own domain, so that
-the carbon budget still closes cell-by-cell (reco = ra + rh, npp = gpp - ra)
-without the water bounds needlessly removing good carbon cells. Cells are masked
-for all time rather than only in the breaching months, because the diagnosis is a
-property of the pixel: at 42N/80W rh_co2 breaches in 32 of 252 months but
-averages 6.8 gC m-2 d-1 against a global median of 0.41, so the months that pass
-the bound are not trustworthy either.
+(``< 1e-3``). Two independent masks are built -- carbon and water -- and
+each is applied only across its own domain, so that the carbon budget still
+closes cell-by-cell (reco = ra + rh, npp = gpp - ra) without the water bounds
+needlessly removing good carbon cells. Cells are masked for all time
+rather than only in the breaching months, because the diagnosis is a property of
+the pixel: at 42N/80W rh_co2 breaches in 32 of 252 months but averages 6.8
+gC m-2 d-1 against a global median of 0.41, so the months that pass the bound are
+not trustworthy either.
+
+Note that the bounds are evaluated on the *median* member only. The published
+25th/75th uncertainty bounds are the raw ensemble interquartile range and are not
+filtered, so at retained cells they can exceed these ceilings (see README).
 
 This is deliberately *not* a statistical outlier filter. The apparent hotspots in
 gpp, reco, rh, npp, cVeg, ra and et are the right-hand tail of a strongly skewed
 but physically real distribution -- their maxima sit at only 1.0-1.5x the 99th
-percentile and fall in Borneo, New Guinea, Amazonia and the Congo. Percentile
-clipping would delete the wet tropics.
+percentile and fall in Borneo, New Guinea and the Congo. Percentile clipping
+would delete the wet tropics.
 """
 
 from __future__ import annotations
@@ -120,14 +125,21 @@ QC_BOUNDS = [
     ("H2O_LY3",    1.0e4,   "any",   "water",   "soil layer 3 > 10 m water column"),
     ("H2O_SWE",    3.0e3,   "mean",  "water",   "mean SWE > 3 m implies a glacier, which DALEC-CWE lacks"),
     ("runoff",     30.0,    "any",   "water",   "runoff > 30 kg m-2 d-1"),
+    # No bound on D_TEMP_LY1. It reaches 73.4 C at 66N/155E and 58.7 C at
+    # 70N/160E -- single-month spikes in cells whose means are -3.7 and -7.7 C,
+    # so almost certainly numerical. But a flat ceiling low enough to catch them
+    # also removes hot deserts (18N/5W runs above 50 C in 86 months, a coherent
+    # seasonal cycle), which would be deleting real signal. Left unmasked and
+    # documented pending advice from the data producers.
 ]
 
 # Source quantities that may legitimately be negative (net exchanges). Everything
-# else is a rate or a stock and is clipped at zero on read, which removes the
-# roundoff-level negatives the source carries (gpp has 15 values at ~-1e-5
-# gC m-2 d-1). Clipping on read rather than on write matters: it keeps the
-# derived variables exactly consistent with their terms, so npp == gpp - ra still
-# holds at the affected cells.
+# else is a rate or a stock and is clipped at zero on read. This removes the small
+# number of negatives the source carries in positive-definite fields: gpp has 15
+# (eleven at roundoff ~1e-17, four larger, the biggest -0.0222 gC m-2 d-1) and
+# transp_25th has 7 (min -6.6e-4 kg m-2 d-1). Clipping on read rather than on
+# write matters: it keeps the derived variables exactly consistent with their
+# terms, so npp == gpp - ra still holds at the affected cells.
 SIGNED_BASES = {"NBE", "NEP"}
 
 # ----------------------------------------------------------------------------
@@ -139,11 +151,16 @@ COMMENT_BASE = (
     "attribute for the exact bounds. These arise where CARDAMOM's per-pixel "
     "initial conditions are poorly constrained (producing a decaying "
     "disequilibrium transient over 2001-2003) or over ice caps, which DALEC-CWE "
-    "does not represent. IMPORTANT: CARDAMOM assimilates GRACE/GRACE-FO water "
-    "storage, GRUN runoff, satellite GPP and LAI, biomass, HWSD soil carbon, "
-    "MODIS snow-covered fraction, fire emissions and CMS-Flux NBE. Comparisons "
-    "against models are therefore NOT independent of the corresponding ILAMB "
-    "reference datasets."
+    "does not represent. The bounds are evaluated on the median member only; the "
+    "25th/75th bounds are the raw ensemble interquartile range and may exceed "
+    "them at retained cells. IMPORTANT: CARDAMOM assimilates GRACE/GRACE-FO "
+    "water storage, mean runoff (GRUN), satellite GPP and LAI, above- and "
+    "below-ground biomass, harmonised soil organic carbon, MODIS snow-covered "
+    "fraction, MOPITT-CO-derived fire emissions and CMS-Flux NBE, and is forced "
+    "by ERA5 meteorology, atmospheric CO2 and prescribed burned area. "
+    "Comparisons against models are therefore NOT independent of the "
+    "corresponding ILAMB reference datasets; see README.md for the mapping and "
+    "for which variables remain informative."
 )
 COMMENT = {
     "mrso": COMMENT_BASE + " Additionally, DALEC-CWE's three soil water layers "
@@ -156,10 +173,19 @@ COMMENT = {
     "both reference and model, so the unpublished layer depths do not affect "
     "this comparison. Note that GRACE/GRACE-FO water storage anomalies were "
     "assimilated by CARDAMOM, so this is not an independent check against GRACE.",
-    "tsl": COMMENT_BASE + " Additionally, this is the temperature of DALEC-CWE's "
-    "first energy state, whose depth is not published. No depth coordinate is "
+    "tsl": COMMENT_BASE + " NOTE: tsl is NOT quality-controlled. It reaches "
+    "73.4 C at 66N/155E and 58.7 C at 70N/160E, both single months in cells "
+    "whose long-term means are below freezing; treat high-latitude extremes "
+    "with caution. No bound is applied because any ceiling low enough to catch "
+    "them also removes genuinely hot deserts. Additionally, this is the "
+    "temperature of DALEC-CWE's first energy state, whose depth is not published. No depth coordinate is "
     "provided and depth-sensitive analyses (e.g. ILAMB's ConfPermafrost, which "
     "uses dmax=3.5 m) are not supported by this dataset.",
+    "nee": COMMENT_BASE + " Additionally, nee is defined here as -NEP, taken "
+    "directly from the source. This is not identical to reco - gpp as published "
+    "in this collection (they differ by up to 1.7 gC m-2 d-1, median 0.006), and "
+    "ILAMB derives the model-side nee as ra + rh - gpp, so a small definitional "
+    "offset between reference and model is expected.",
 }
 
 # ----------------------------------------------------------------------------
@@ -200,7 +226,7 @@ VARDEFS = {
                  factor=POOL, units="kg m-2", long_name="Carbon Mass in Vegetation", domain="carbon",
                  standard_name="vegetation_carbon_content"),
     "cSoil": dict(terms=[("C_som", 1.0)], factor=POOL, units="kg m-2", domain="carbon",
-                  long_name="Carbon Mass in Soil Pool", standard_name="soil_carbon_content"),
+                  long_name="Carbon Mass in Soil Pool", standard_name="soil_mass_content_of_carbon"),
     "cLitter": dict(terms=[("C_lit", 1.0), ("C_cwd", 1.0)], factor=POOL, units="kg m-2", domain="carbon",
                     long_name="Carbon Mass in Litter Pool (incl. coarse woody debris)",
                     standard_name="litter_carbon_content"),
@@ -221,7 +247,7 @@ VARDEFS = {
     # for a like-for-like comparison; see README.
     "mrso": dict(terms=[("H2O_LY1", 1.0), ("H2O_LY2", 1.0), ("H2O_LY3", 1.0)],
                  factor=1.0, units="kg m-2", long_name="Total Soil Moisture Content", domain="water",
-                 standard_name="soil_moisture_content"),
+                 standard_name="mass_content_of_water_in_soil"),
     # tws is the one water-storage product that is magnitude-independent in ILAMB:
     # ConfTWSA subtracts the temporal mean from both reference and model before
     # scoring, so the unpublished layer depths do not matter.
@@ -320,7 +346,7 @@ def build_qc_masks(ds: xr.Dataset):
     module docstring.
     """
     shape = (ds.sizes["lat"], ds.sizes["lon"])
-    masks = {"carbon": np.zeros(shape, bool), "water": np.zeros(shape, bool)}
+    masks = {d: np.zeros(shape, bool) for d in {b[3] for b in QC_BOUNDS}}
     detail = {}  # (lat, lon) -> list of reasons, for the run log
 
     for base, bound, how, domain, why in QC_BOUNDS:

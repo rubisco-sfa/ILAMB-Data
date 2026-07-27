@@ -32,24 +32,40 @@ then writes `DATA/<var>/CARDAMOM/<var>.nc`.
 
 ## ⚠️ Not independent of several existing ILAMB reference datasets
 
-CARDAMOM is a model–data fusion product, and the observations it assimilates
-overlap with datasets ILAMB already benchmarks against. Comparing a model to
-CARDAMOM is therefore **not** an independent check against those references:
+CARDAMOM is a model–data fusion product. The observations it assimilates overlap
+with datasets ILAMB already benchmarks against, so comparing a model to CARDAMOM
+is **not** an independent check against those references. ILAMB names below are
+the section names in `src/ILAMB/data/ilamb.cfg`, verified against that file.
 
-| CARDAMOM output | assimilated constraint | overlapping ILAMB reference |
-|---|---|---|
-| `tws`, `mrso` | GRACE/GRACE-FO water storage anomalies | GRACE (`twsa`) |
-| `mrro`, `mrros` | GRUN runoff | Dai, GRDC (`mrro`) |
-| `gpp` | satellite GPP (Joiner et al. 2018) | FLUXCOM, WECANN (`gpp`) |
-| `lai` | satellite LAI | AVHRR, MODIS (`lai`) |
-| `cSoil` | HWSD soil carbon (Hiederer & Köchy 2011) | HWSD, NCSCD (`cSoil`) |
-| `cVeg` | above/below-ground biomass | ESACCI, GEOCARBON, XuSaatchi (`cVeg`) |
-| `nbp`, `nee` | CMS-Flux NBE (Liu et al. 2021) | GCP, Hoffman (`nbp`) |
-| `snw` | MODIS snow-covered fraction | CanSISE (`swe`) — SCF, not SWE, so only indirect |
-| `fFire` | fire carbon emissions | GFED (`burntArea`, `fFire`) |
+| CARDAMOM output | assimilated constraint | ILAMB confrontation (variable) | overlap |
+|---|---|---|---|
+| `tws`, `mrso` | GRACE/GRACE-FO TWS anomalies (Wiese et al. 2016) | GRACE (`twsa`, alt `tws`) | **direct** |
+| `cVeg` | above/below-ground biomass, incl. **Xu, Saatchi et al. 2021** | XuSaatchi2021, ESACCI, GEOCARBON, NBCD2000, Saatchi2011, Thurner, USForest (`biomass`, alt `cVeg`) | **same dataset** as XuSaatchi2021 |
+| `nbp`, `nee` | CMS-Flux NBE (Liu et al. 2021) | GCP, Hoffman (`nbp`) | **direct** |
+| `gpp` | reflectance-based GPP (Joiner et al. 2018) | FLUXCOM, WECANN, FLUXNET2015 (`gpp`) | direct |
+| `lai` | MODIS/Aqua LAI (Myneni et al. 2015) | AVHRR, AVH15C1, MODIS (`lai`) | direct |
+| `cSoil` | harmonised SOC (Hiederer & Köchy 2011, i.e. HWSD) | HWSD, NCSCDV22, Koven (`cSoilAbove1m`, alt `cSoil`) | direct; note ILAMB scores a top-1 m quantity |
+| `snw` | MODIS/Terra snow-covered **fraction** (Hall & Riggs 2016) | CanSISE (`swe`, alt `snw`) | indirect — SCF, not SWE |
+| `mrro`, `mrros` | **mean** runoff only (GRUN, Ghiggi et al. 2019) | Dai, LORA, CLASS (`runoff`, alt `mrro`) | mean only — seasonality and IAV stay informative |
+| `fFire` | fire C emissions from **MOPITT CO** (Jiang et al. 2017) | *no `fFire` confrontation exists in the stock config* | — |
+| — | `Driver_BURNED_AREA` is a prescribed **forcing** | GFED4.1S (`burntArea`) | **circular by construction** |
+| all | ERA5 meteorology and atmospheric CO₂ (forcings) | ERA5 and others under `[h1: Forcings]` | forcing-side |
 
-`ra`, `rh`, `reco`, `npp`, `cLitter`, `et`, `tran` and `tsl` are not directly
-constrained and are the most informative targets for benchmarking.
+**Only `ra`, `rh`, `cLitter` and `tsl` are defensibly independent.** Four
+variables that look independent are not:
+
+- **`reco`** is pinned by the assimilation: `reco = gpp − NEP` holds to a median
+  absolute difference of 0.0059 gC m⁻² d⁻¹ against a typical `reco` of 1.25
+  (0.47%), and both `gpp` and `NEP` are constrained.
+- **`npp`** = `gpp − ra` inherits the `gpp` constraint.
+- **`et`** is effectively the water-balance residual of ERA5 precipitation
+  (forcing), GRUN-constrained runoff and GRACE-constrained storage:
+  corr(time-mean ET, P−Q) = **0.9968**, and the long-term balance closes to
+  2 mm yr⁻¹ out of ~555. Benchmarking it largely re-tests ERA5 − GRUN.
+- **`tran`** inherits the same ET balance.
+
+`ra` and `rh` are pinned only *jointly* (through `reco`), so individually they
+remain useful targets.
 
 ## Quality control: masked grid cells
 
@@ -66,7 +82,7 @@ without the water bounds needlessly discarding sound carbon cells:
 | `C_som` > 100 kgC m⁻² | any month | carbon | 2 | exceeded only by deep peat |
 | `C_cwd` > 20 kgC m⁻² | any month | carbon | 3 | implausible coarse woody debris |
 | `rh_co2` > 20 gC m⁻² d⁻¹ | any month | carbon | 3 | not sustained by any ecosystem |
-| `H2O_LY3` > 10 000 kg m⁻² | any month | water | 10 | a >10 m water column |
+| `H2O_LY3` > 10 000 kg m⁻² | any month | water | 9 | a >10 m water column |
 | `H2O_SWE` > 3 000 kg m⁻² | time mean | water | 7 | >3 m mean SWE implies a glacier |
 | `runoff` > 30 kg m⁻² d⁻¹ | any month | water | 2 | both already caught above |
 
@@ -85,26 +101,36 @@ months are not trustworthy either.
 pool sizes per pixel with no steady-state assumption, so at a few cells the
 initial state is badly determined and the run spends years relaxing away from it.
 The clearest case is 42°N/80°W, where `C_cwd` starts at 48 180 gC m⁻² and decays
-to 690 gC m⁻² by 2021 — a factor of 70, against 1.9 for the next-worst cell —
+to 690 gC m⁻² by 2021 — a factor of 70, against 2.04 for the next-worst cell —
 driving `rh_co2` to 60 gC m⁻² d⁻¹ and `NEP` to −51 gC m⁻² d⁻¹. This single cell
-was the whole of the `cSoil` and `nee` signal reviewers noticed; it alone shifted
-global-mean `cSoil` by 3.4% and `NEP` by 13%. The timing is diagnostic: **all 34
-months in the entire record with `rh_co2` > 20 gC m⁻² d⁻¹ fall in 2001–2003, none
-later.**
+was the whole of the `cSoil` and `nee` signal reviewers noticed; masking it alone
+moves global-mean `cSoil` by 2.0% and `NEP` by 13.9% (the full six-cell carbon
+mask moves `cSoil` by 3.3%). The timing is diagnostic: **all 34 cell-months in the
+entire record with `rh_co2` > 20 gC m⁻² d⁻¹ fall in 2001–2003, none later.**
 
-**No glacier representation (water).** DALEC-CWE has no glacier or permanent-ice
-store, so snow and soil water accumulate without bound over ice caps. Twelve of
-the fifteen water cells are glaciated: Svalbard, Ellesmere, Devon, Novaya Zemlya,
-Baffin, the St Elias / Wrangell / Chugach / Alaska ranges, Glacier Bay, and the
-Andes. Masking them drops `snw` p99 from 2558 to 312 kg m⁻² and `mrso` max from
-52 607 to 16 050 kg m⁻².
+**Two distinct water failure modes.** The seven cells caught by `H2O_SWE` are
+glaciated, and DALEC-CWE has no glacier or permanent-ice store, so snow
+accumulates without bound: Baffin, Devon, Novaya Zemlya, Ellesmere (×2) and
+Svalbard (×2). The nine caught by `H2O_LY3` are a *different* problem — runaway
+deep soil water — and only four of them are glaciated (Glacier Bay, Alaska Range,
+Chugach, St Elias, plus Svalbard which is caught by both). **11 of the 15 water
+cells are glaciated, not all of them.** In particular (−30, −65) is the Sierras
+Pampeanas of Argentina, not the glaciated Central Andes (which lie near 70°W, in
+an unmasked cell); its mean SWE is 2.7 kg m⁻², so the glacier explanation does not
+apply to it at all. Masking drops `snw` p99 from 2558 to 312 kg m⁻² and `mrso` max
+from 52 607 to 16 050 kg m⁻².
+
+**A glaciated cell survives.** (70°N, 75°W) has a mean SWE of 2 915 kg m⁻² and a
+peak of 3 851 — a glacier by the criterion above — but sits 2.9% under the 3 000
+bound and is retained. It is the largest remaining `snw` value.
 
 ### On the apparent tropical hotspots
 
 `gpp`, `reco`, `rh`, `npp`, `cVeg`, `ra` and `et` contain no outliers. Their
-time-mean maxima sit at only 1.0–1.5× the 99th percentile and fall in Borneo, New
-Guinea, Amazonia and the Congo — the most productive land on Earth. These fields
-are strongly right-skewed (`cLitter`: median 1.15, p99 12.3 kg m⁻²), so on a
+time-mean maxima sit at only 1.0–1.5× the 99th percentile (`ra` is the largest at
+1.52×) and fall in Borneo, New Guinea and the Congo — the most productive land on
+Earth. These fields are strongly right-skewed (`cLitter`: median 1.13, p99
+11.6 kg m⁻²), so on a
 linear colour scale the tropics saturate and the rest of the map flattens, which
 reads as a hotspot artifact. **Percentile-based clipping would delete the wet
 tropics** and bias every score derived from them, so it is deliberately not used
@@ -127,6 +153,15 @@ would misstate the ensemble spread. The six derived sums — `reco`, `npp`, `cVe
 are negated source terms, the quartiles are swapped, since negating a distribution
 exchanges its lower and upper quartiles.
 
+**The bounds are not quality-controlled.** `QC_BOUNDS` is evaluated on the median
+member only, so at retained cells the published interquartile range can exceed
+those ceilings — the `rh` upper bound reaches 73.7 gC m⁻² d⁻¹ (against a 20 bound)
+in 5 cell-months, `cSoil` reaches 115.5 kg m⁻² (against 100), and `snw` reaches
+4064 kg m⁻² (against 3000). This is the raw posterior spread and is left
+unfiltered deliberately, but it means the bounds should not be read as
+physically-screened envelopes. Whether cells should instead be masked when their
+*quartiles* breach is an open question for the data producers.
+
 ## Soil water and soil temperature: what is and is not comparable
 
 DALEC-CWE's three soil water layers are **per-pixel calibrated stores whose
@@ -140,7 +175,7 @@ Consequences:
   depths do not matter. (But note the GRACE circularity above.)
 - **`mrso` magnitudes are not model-comparable.** Summing the three layers is the
   correct construction for CMIP `mrso` (full-column total soil moisture) and the
-  median, 1369 kg m⁻², is reasonable — but the upper tail still reaches ~11 700
+  median, 1367 kg m⁻², is reasonable — but the upper tail still reaches ~11 200
   kg m⁻² after masking, against ~3400 for a CLM5-depth column. Retained with this
   caveat rather than dropped, so users can decide.
 - **No `mrsos` is provided.** `H2O_LY1` is roughly 5× the CMIP top-10 cm
@@ -150,6 +185,12 @@ Consequences:
 - **`tsl` carries no depth coordinate.** It is the temperature of the first energy
   state, whose depth is likewise unpublished. Depth-sensitive analyses — notably
   ILAMB's `ConfPermafrost`, which uses `dmax = 3.5` m — are **not supported**.
+- **`tsl` is not quality-controlled, and has two suspect cells.** It reaches
+  73.4 °C at (66°N, 155°E) and 58.7 °C at (70°N, 160°E), each in a single month,
+  in cells whose long-term means are −3.7 °C and −7.7 °C — almost certainly
+  numerical. No bound is applied because any ceiling low enough to catch them also
+  removes genuinely hot deserts: (18°N, 5°W) exceeds 50 °C in 86 months as a
+  coherent seasonal cycle. Flagged for the data producers rather than guessed at.
 
 ## Formatting choices
 - CF-1.11, `noleap` calendar, `days since 1850-01-01` with `time_bnds`, plus
@@ -162,8 +203,9 @@ Consequences:
   `_FillValue`/`missing_value` and has no NaN code path, so a bare NaN would not
   be masked.
 - Quantities that are physically non-negative are clipped at zero **on read**,
-  which removes the roundoff-level negatives the source carries (`gpp` has 15
-  values near −1×10⁻⁵ gC m⁻² d⁻¹) while keeping derived variables exactly
+  which removes the small number of negatives the source carries in
+  positive-definite fields (`gpp` has 15: eleven at roundoff ~1×10⁻¹⁷, four
+  larger, the biggest −0.0222 gC m⁻² d⁻¹) while keeping derived variables exactly
   consistent with their terms. `NBE` and `NEP` are net exchanges and are left
   signed.
 
