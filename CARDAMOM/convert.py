@@ -524,6 +524,9 @@ def main(source: str = SOURCE_FILE):
         }
         if lo_da is not None:
             enc[f"{name}_bnds"] = {"zlib": True, "_FillValue": FILL}
+            # suppress the spurious `coordinates = "lat_bnds lon_bnds time_bnds"`
+            # xarray would otherwise attach; a bounds variable is not a coordinate
+            out[f"{name}_bnds"].encoding["coordinates"] = None
         out.to_netcdf(path / f"{name}.nc", encoding=enc)
         nmask = int(masks[d["domain"]].sum()) if d["domain"] else 0
         print(f"  wrote {path/f'{name}.nc'}  [{d['units']}]"
