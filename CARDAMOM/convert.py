@@ -40,11 +40,21 @@ of the 34 cell-months in the whole record with rh_co2 > 20 gC m-2 d-1 falls in
 process. Masking this one cell moves the global-land mean of cSoil by 2.0% and of
 NEP by 13.9%.
 
-Separately, DALEC-CWE has no glacier or permanent-ice representation, so snow
-accumulates without bound over ice caps (Svalbard, Ellesmere, Devon, Novaya
-Zemlya, Baffin and the St Elias/Wrangell/Chugach/Alaska ranges), giving
-multi-metre mean snow water equivalent. A distinct failure mode gives soil-water
-columns in excess of 50 m at some high-latitude cells that are *not* glaciated.
+Separately, DALEC-CWE has no glacier or permanent-ice representation, and due
+to this structural simplicity all water-storage anomalies are attributed to
+changes in the snow and soil water states. Snowmelt dynamics are constrained by
+MODIS snow-covered fraction and by GRUN mean runoff, but the GRUN runoff is an
+ML extrapolation from climate variables, which physically cannot account for
+water precipitated in prior years (i.e. melting glaciers); where SCF stays
+saturated, the snowpack -- whose melt routine is far simpler than soil ice's --
+becomes the convenient store for meeting the joint TWS and runoff constraints
+in frozen regions, giving multi-metre mean snow water equivalent over glaciated
+cells (Svalbard, Ellesmere, Devon, Novaya Zemlya, Baffin). This does not
+degrade the constrained runoff itself, which remains realistic -- the seasonal
+meltwater is simply sourced from the wrong store. The same attribution problem
+appears on the soil side as unrealistically deep water columns (>50 m in soil
+layer 3) in regions with melting glaciers or drying lakes, including some
+high-latitude cells that are *not* themselves glaciated.
 
 We therefore mask whole grid cells that breach a fixed, physically justified
 bound (``QC_BOUNDS`` below), in the manner of GIMMS_LAI4g (``< 7000``) and NCSCD
@@ -60,6 +70,11 @@ not trustworthy either.
 Note that the bounds are evaluated on the *median* member only. The published
 25th/75th uncertainty bounds are the raw ensemble interquartile range and are not
 filtered, so at retained cells they can exceed these ceilings (see README).
+
+The masked values are statistically real, replicable outputs of the
+assimilation; the bound says only that they should not be used as benchmark
+targets. The diagnoses above are working notes from the data-user side and are
+necessarily incomplete -- see "Why these cells fail" in README.md.
 
 This is deliberately *not* a statistical outlier filter. The apparent hotspots in
 gpp, reco, rh, npp, cVeg, ra and et are the right-hand tail of a strongly skewed
@@ -153,8 +168,10 @@ COMMENT_BASE = (
     "Grid cells whose state is non-physical have been masked; see the history "
     "attribute for the exact bounds. These arise where CARDAMOM's per-pixel "
     "initial conditions are poorly constrained (producing a decaying "
-    "disequilibrium transient over 2001-2003) or over ice caps, which DALEC-CWE "
-    "does not represent. The bounds are evaluated on the median member only; the "
+    "disequilibrium transient over 2001-2003) or where water-storage anomalies "
+    "from melting glaciers or drying lakes are attributed to the snow and soil "
+    "water states, DALEC-CWE having no glacier store. "
+    "The bounds are evaluated on the median member only; the "
     "25th/75th bounds are the raw ensemble interquartile range and may exceed "
     "them at retained cells. IMPORTANT: CARDAMOM assimilates GRACE/GRACE-FO "
     "water storage, mean runoff (GRUN), satellite GPP and LAI, above- and "
@@ -167,7 +184,9 @@ COMMENT_BASE = (
 )
 COMMENT = {
     "mrso": COMMENT_BASE + " Additionally, DALEC-CWE's three soil water layers "
-    "are per-pixel calibrated stores whose thicknesses are not published, so "
+    "are per-pixel calibrated stores whose thicknesses are fitted parameters "
+    "(effective depths tied to the model's implicit system boundaries; see "
+    "README.md for the Zenodo parameter archive), so "
     "although summing them is the correct construction for CMIP mrso, absolute "
     "magnitudes are not comparable to a model with a fixed soil column depth "
     "(the upper tail exceeds any CMIP column capacity). Use tws, which ILAMB's "
@@ -180,12 +199,16 @@ COMMENT = {
     "own ERA5 forcing, whose hottest monthly-mean skin temperature anywhere is "
     "41.8 C; a subsurface layer cannot exceed its own surface forcing as a "
     "monthly mean. Additionally, this is the temperature of DALEC-CWE's first "
-    "energy state, whose depth is not published. No depth coordinate is "
+    "energy state, whose depth is a per-pixel fitted parameter (see README.md "
+    "for the Zenodo parameter archive). No depth coordinate is "
     "provided and depth-sensitive analyses (e.g. ILAMB's ConfPermafrost, which "
     "uses dmax=3.5 m) are not supported by this dataset.",
     "nee": COMMENT_BASE + " Additionally, nee is defined here as -NEP, taken "
     "directly from the source. This is not identical to reco - gpp as published "
-    "in this collection (they differ by up to 1.7 gC m-2 d-1, median 0.006), and "
+    "in this collection (they differ by up to 1.7 gC m-2 d-1, median 0.006). "
+    "That difference is not a mass-closure error: within CARDAMOM every "
+    "ensemble member closes exactly, but the published fields are per-variable "
+    "ensemble medians, and medians of non-normal distributions do not sum. "
     "ILAMB derives the model-side nee as ra + rh - gpp, so a small definitional "
     "offset between reference and model is expected.",
 }
@@ -243,10 +266,12 @@ VARDEFS = {
                   long_name="Surface Runoff", standard_name="surface_runoff_flux"),
     # --- water / snow pools (kg m-2) -----------------------------------------
     # NOTE on mrso: DALEC-CWE's three soil water layers are per-pixel calibrated
-    # stores whose thicknesses are not published, so while the sum is the correct
-    # construction for CMIP mrso (full-column total soil moisture) its absolute
-    # magnitude is not comparable to a model with a fixed soil column. Use tws
-    # for a like-for-like comparison; see README.
+    # stores. Their thicknesses are fitted parameters (in the Zenodo archive,
+    # see README), effective depths tied to the model's implicit system
+    # boundaries rather than physical soil horizons -- so while the sum is the
+    # correct construction for CMIP mrso (full-column total soil moisture) its
+    # absolute magnitude is not comparable to a model with a fixed soil column.
+    # Use tws for a like-for-like comparison; see README.
     "mrso": dict(terms=[("H2O_LY1", 1.0), ("H2O_LY2", 1.0), ("H2O_LY3", 1.0)],
                  factor=1.0, units="kg m-2", long_name="Total Soil Moisture Content", domain="water",
                  standard_name="mass_content_of_water_in_soil"),
@@ -262,7 +287,8 @@ VARDEFS = {
     "lai": dict(terms=[("D_LAI", 1.0)], factor=1.0, units="1", domain=None,
                 long_name="Leaf Area Index", standard_name="leaf_area_index"),
     # NOTE on tsl: D_TEMP_LY1 is the temperature of DALEC-CWE's first energy
-    # state, whose depth is not published. No depth coordinate is written, and
+    # state, whose depth is a per-pixel fitted parameter (see README). No depth
+    # coordinate is written, and
     # depth-sensitive confrontations (ConfPermafrost, dmax=3.5) are unsupported.
     "tsl": dict(terms=[("D_TEMP_LY1", 1.0)], factor=1.0, units="K", domain="temp",
                 long_name="Temperature of Soil (layer 1)", standard_name="soil_temperature"),
