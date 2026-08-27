@@ -12,6 +12,10 @@ versus climate process compensation across the global land carbon sink*, AGU
 Advances 6:e2025AV001689, [doi:10.1029/2025AV001689](https://doi.org/10.1029/2025AV001689).
 Known limitations are discussed in its Section 3.5.
 
+Model code and the per-pixel posterior parameter files (CBR files) accompanying
+that paper are archived on Zenodo:
+[doi:10.5281/zenodo.14521190](https://doi.org/10.5281/zenodo.14521190).
+
 ## Source
 Single file `CARDAMOM_satellite_constrained_terrestrial_biosphere_reanalysis.nc4`:
 4° lat × 5° lon global grid (lat 35, lon 72; 835 land cells), monthly Jan-2001 –
@@ -37,26 +41,48 @@ with datasets ILAMB already benchmarks against, so comparing a model to CARDAMOM
 is **not** an independent check against those references. ILAMB names below are
 the section names in `src/ILAMB/data/ilamb.cfg`, verified against that file.
 
+The **overlap** column uses a fixed vocabulary:
+
+- **same dataset** — the assimilated product is (or includes) the very dataset
+  ILAMB scores against. Note this describes the *constraint*, not the output:
+  e.g. CARDAMOM's `cVeg` is not a copy of XuSaatchi2021, but it is directly
+  constrained by that same product.
+- **same observable** — a *different* product of the same quantity; scoring
+  still re-tests overlapping underlying information, but not the identical data.
+- **related** — the constraint informs the quantity only partially or
+  indirectly.
+- **circular by construction** — the ILAMB reference is prescribed to CARDAMOM
+  as a forcing.
+
 | CARDAMOM output | assimilated constraint | ILAMB confrontation (variable) | overlap |
 |---|---|---|---|
-| `tws`, `mrso` | GRACE/GRACE-FO TWS anomalies (Wiese et al. 2016) | GRACE (`twsa`, alt `tws`) | **direct** |
-| `cVeg` | above/below-ground biomass, incl. **Xu, Saatchi et al. 2021** | XuSaatchi2021, ESACCI, GEOCARBON, NBCD2000, Saatchi2011, Thurner, USForest (`biomass`, alt `cVeg`) | **same dataset** as XuSaatchi2021 |
-| `nbp`, `nee` | CMS-Flux NBE (Liu et al. 2021) | GCP, Hoffman (`nbp`) | **direct** |
-| `gpp` | reflectance-based GPP (Joiner et al. 2018) | FLUXCOM, WECANN, FLUXNET2015 (`gpp`) | direct |
-| `lai` | MODIS/Aqua LAI (Myneni et al. 2015) | AVHRR, AVH15C1, MODIS (`lai`) | direct |
-| `cSoil` | harmonised SOC (Hiederer & Köchy 2011, i.e. HWSD) | HWSD, NCSCDV22, Koven (`cSoilAbove1m`, alt `cSoil`) | direct; note ILAMB scores a top-1 m quantity |
-| `snw` | MODIS/Terra snow-covered **fraction** (Hall & Riggs 2016) | CanSISE (`swe`, alt `snw`) | indirect — SCF, not SWE |
-| `mrro`, `mrros` | **mean** runoff only (GRUN, Ghiggi et al. 2019) | Dai, LORA, CLASS (`runoff`, alt `mrro`) | mean only — seasonality and IAV stay informative |
+| `tws`, `mrso` | GRACE/GRACE-FO TWS anomalies (Wiese et al. 2016) | GRACE (`twsa`, alt `tws`) | **same observable** (both GRACE-derived; the mascon processing may differ) |
+| `cVeg` | above/below-ground biomass, incl. **Xu, Saatchi et al. 2021** | XuSaatchi2021, ESACCI, GEOCARBON, NBCD2000, Saatchi2011, Thurner, USForest (`biomass`, alt `cVeg`) | **same dataset** (XuSaatchi2021); same observable (the rest) |
+| `nbp`, `nee` | CMS-Flux NBE (Liu et al. 2021) | GCP, Hoffman (`nbp`) | **same observable** — CMS-Flux, GCP and Hoffman are distinct NBP/NBE products |
+| `gpp` | reflectance-based GPP (Joiner et al. 2018) | FLUXCOM, WECANN, FLUXNET2015 (`gpp`) | **same observable**, different products |
+| `lai` | MODIS/Aqua LAI (Myneni et al. 2015) | AVHRR, AVH15C1, MODIS (`lai`) | **same dataset** (the MODIS reference); same observable (AVHRR) |
+| `cSoil` | harmonised SOC (Hiederer & Köchy 2011, i.e. HWSD) | HWSD, NCSCDV22, Koven (`cSoilAbove1m`, alt `cSoil`) | **same dataset** (HWSD); same observable (the rest); note ILAMB scores a top-1 m quantity |
+| `snw` | MODIS/Terra snow-covered **fraction** (Hall & Riggs 2016) | CanSISE (`swe`, alt `snw`) | related — SCF constrains snow presence/timing, not mass |
+| `mrro`, `mrros` | **mean** runoff only (GRUN, Ghiggi et al. 2019) | Dai, LORA, CLASS (`runoff`, alt `mrro`) | related — mean only; seasonality and IAV stay informative |
 | `fFire` | fire C emissions from **MOPITT CO** (Jiang et al. 2017) | *no `fFire` confrontation exists in the stock config* | — |
 | — | `Driver_BURNED_AREA` is a prescribed **forcing** | GFED4.1S (`burntArea`) | **circular by construction** |
 | all | ERA5 meteorology and atmospheric CO₂ (forcings) | ERA5 and others under `[h1: Forcings]` | forcing-side |
 
-**Only `ra`, `rh`, `cLitter` and `tsl` are defensibly independent.** Four
+This overlap is by design, and it is CARDAMOM's strength: variables constrained
+from several directions at once are novel statistical fusions of the underlying
+observations, generally more robust than any single input. The table is not a
+list of defects — it exists because for *benchmarking* the relevant question is
+narrower: does scoring a model against CARDAMOM re-test the same observations
+as an existing ILAMB reference? In that narrow sense, **only `ra`, `rh`,
+`cLitter` and `tsl` are defensibly independent** of the stock references. Four
 variables that look independent are not:
 
 - **`reco`** is pinned by the assimilation: `reco = gpp − NEP` holds to a median
   absolute difference of 0.0059 gC m⁻² d⁻¹ against a typical `reco` of 1.25
-  (0.47%), and both `gpp` and `NEP` are constrained.
+  (0.47%), and both `gpp` and `NEP` are constrained. Note the assimilated
+  CMS-Flux quantity is **NBE, not NBP** — `NBE = reco + fFire − gpp` — so the
+  MOPITT-CO fire constraint enters this chain as well: `reco` is pinned jointly
+  by the GPP, NBE and fire constraints.
 - **`npp`** = `gpp − ra` inherits the `gpp` constraint.
 - **`et`** is effectively the water-balance residual of ERA5 precipitation
   (forcing), GRUN-constrained runoff and GRACE-constrained storage:
@@ -96,7 +122,14 @@ the defect is a property of the pixel: at 42°N/80°W `rh_co2` breaches in 32 of
 months but averages 6.8 gC m⁻² d⁻¹ against a global median of 0.41, so the passing
 months are not trustworthy either.
 
-### Why these cells fail
+### Why these cells fail — known issues (in progress)
+
+The masked values are statistically real and replicable outputs of the
+assimilation; the bounds above say only that they should not be used as
+benchmark targets. The diagnoses below are **working notes and necessarily
+incomplete** — attributing a bias to its origin in a fusion product is genuine
+diagnosis work. Questions should go to the dataset authors (see the citation
+above and the ORNL DAAC landing page).
 
 **Poorly constrained initial conditions (carbon).** CARDAMOM estimates initial
 pool sizes per pixel with no steady-state assumption, so at a few cells the
@@ -109,17 +142,29 @@ moves global-mean `cSoil` by 2.0% and `NEP` by 13.9% (the full six-cell carbon
 mask moves `cSoil` by 3.3%). The timing is diagnostic: **all 34 cell-months in the
 entire record with `rh_co2` > 20 gC m⁻² d⁻¹ fall in 2001–2003, none later.**
 
-**Two distinct water failure modes.** The seven cells caught by `H2O_SWE` are
-glaciated, and DALEC-CWE has no glacier or permanent-ice store, so snow
-accumulates without bound: Baffin, Devon, Novaya Zemlya, Ellesmere (×2) and
-Svalbard (×2). The nine caught by `H2O_LY3` are a *different* problem — runaway
-deep soil water — and only four of them are glaciated (Glacier Bay, Alaska Range,
-Chugach, St Elias, plus Svalbard which is caught by both). **11 of the 15 water
-cells are glaciated, not all of them.** In particular (−30, −65) is the Sierras
-Pampeanas of Argentina, not the glaciated Central Andes (which lie near 70°W, in
-an unmasked cell); its mean SWE is 2.7 kg m⁻², so the glacier explanation does not
-apply to it at all. Masking drops `snw` p99 from 2558 to 312 kg m⁻² and `mrso` max
-from 52 607 to 16 050 kg m⁻².
+**Water: storage anomalies have nowhere else to go.** DALEC-CWE has no glacier
+or permanent-ice store, and due to this structural simplicity all water-storage
+anomalies are attributed to changes in the snow and soil water states. Snowmelt
+dynamics are constrained by MODIS snow-covered fraction and by GRUN mean
+runoff, but the GRUN runoff is an ML extrapolation from climate variables,
+which physically cannot account for water precipitated in prior years (i.e.
+melting glaciers) — so in these regions the runoff constraint itself
+underestimates. Where SCF stays saturated, the snowpack — whose melt routine is
+far simpler than soil ice's — becomes the convenient store for meeting the
+joint TWS and runoff constraints in frozen regions. That gives multi-metre mean
+SWE at the seven glaciated `H2O_SWE` cells: Baffin, Devon, Novaya Zemlya,
+Ellesmere (×2) and Svalbard (×2). **This does not degrade the constrained
+runoff itself**, which remains realistic where gauged/constrained — the
+seasonal meltwater is simply sourced from the wrong store. The nine cells
+caught by `H2O_LY3` are the soil-side expression of the same attribution
+problem: unrealistically deep water columns in regions with melting glaciers or
+drying lakes. Four of the nine are glaciated (Glacier Bay, Alaska Range,
+Chugach, St Elias, plus Svalbard which is caught by both), so **11 of the 15
+water cells are glaciated, not all of them** — (−30, −65) is the Sierras
+Pampeanas of Argentina, not the glaciated Central Andes (which lie near 70°W,
+in an unmasked cell); its mean SWE is 2.7 kg m⁻², consistent with the
+drying-lakes mode rather than the glacier one. Masking drops `snw` p99 from
+2558 to 312 kg m⁻² and `mrso` max from 52 607 to 16 050 kg m⁻².
 
 **A glaciated cell survives.** (70°N, 75°W) has a mean SWE of 2 915 kg m⁻² and a
 peak of 3 851 — a glacier by the criterion above — but sits 2.9% under the 3 000
@@ -166,13 +211,18 @@ physically-screened envelopes. Whether cells should instead be masked when their
 ## Soil water and soil temperature: what is and is not comparable
 
 DALEC-CWE's three soil water layers are **per-pixel calibrated stores whose
-thicknesses are not published** — the source file carries no static parameter
-fields, and neither the DAAC user guide nor Bilir et al. (2025) gives depths.
-Per-pixel LY2/LY1 storage ratios span 0.03–142, so no single global depth exists.
-Consequences:
+thicknesses are fitted parameters** — the gridded product carries no static
+parameter fields, but the per-pixel posteriors (layer depths among the 99
+parameters) are available in the CBR files of the Zenodo archive,
+[doi:10.5281/zenodo.14521190](https://doi.org/10.5281/zenodo.14521190). They
+are not put forward as benchmark quantities because they are *effective*
+depths, unique to the model's implicit system boundaries, and may not translate
+to other models — e.g. DALEC-CWE has no irrigation process, so its effective
+rooting depth over irrigated land is too deep. Per-pixel LY2/LY1 storage ratios
+span 0.03–142, so no single global depth exists. Consequences:
 
 - **`tws` is the like-for-like water product.** ILAMB's `ConfTWSA` subtracts the
-  temporal mean from both reference and model before scoring, so unpublished
+  temporal mean from both reference and model before scoring, so the per-pixel
   depths do not matter. (But note the GRACE circularity above.)
 - **`mrso` magnitudes are not model-comparable.** Summing the three layers is the
   correct construction for CMIP `mrso` (full-column total soil moisture) and the
@@ -184,7 +234,8 @@ Consequences:
   definitional reason.
 - **No volumetric (m³ m⁻³) soil moisture** can be derived, for the same reason.
 - **`tsl` carries no depth coordinate.** It is the temperature of the first energy
-  state, whose depth is likewise unpublished. Depth-sensitive analyses — notably
+  state, whose depth is likewise a per-pixel fitted parameter. Depth-sensitive
+  analyses — notably
   ILAMB's `ConfPermafrost`, which uses `dmax = 3.5` m — are **not supported**.
 - **`tsl` is bounded at 50 °C, which removes 6 cells.** The ceiling comes from
   the model's own ERA5 forcing: across the whole grid the hottest monthly-mean
